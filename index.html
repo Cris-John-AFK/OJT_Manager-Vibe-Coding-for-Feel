@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DTR Manager - OJT Calculator</title>
+  <!-- Google Fonts: Inter and Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;600;700&display=swap"
+    rel="stylesheet">
+</head>
+
+<body>
+  <!-- Splash Screen -->
+  <div id="splash-screen" class="splash-screen">
+    <div class="splash-content">
+      <div class="splash-logo">DTR</div>
+      <h1 class="splash-text">Welcome to DTR manager <br> <span>by Cris John</span></h1>
+      <div class="loader-bar">
+        <div class="loader-progress"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App Container -->
+  <div id="root" class="app-container hidden">
+    <header class="app-header">
+      <div class="header-content">
+        <div class="user-info">
+          <span class="greeting">Hello, OJT Student</span>
+          <h2 class="app-title">DTR Dashboard</h2>
+        </div>
+        <button type="button" id="settings-btn" class="icon-btn">
+          <i data-lucide="settings"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- Stats Card -->
+      <section class="stats-card">
+        <div class="progress-circle-container">
+          <svg class="progress-circle" viewBox="0 0 100 100">
+            <circle class="bg" cx="50" cy="50" r="45"></circle>
+            <circle id="progress-bar" class="progress" cx="50" cy="50" r="45"></circle>
+          </svg>
+          <div class="circle-content">
+            <span id="rendered-hours">0h</span>
+            <small>Rendered</small>
+          </div>
+        </div>
+        <div class="stats-info">
+          <div class="stat-item">
+            <span class="stat-label">Goal Hours</span>
+            <span id="goal-hours-display" class="stat-value">600h</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Remaining</span>
+            <span id="remaining-hours" class="stat-value">600h</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Actions -->
+      <section class="quick-actions">
+        <button type="button" id="time-in-btn" class="action-btn in">
+          <i data-lucide="play"></i>
+          <span>Time In</span>
+        </button>
+        <button type="button" id="time-out-btn" class="action-btn out disabled" disabled>
+          <i data-lucide="square"></i>
+          <span>Time Out</span>
+        </button>
+        <button type="button" id="pause-btn" class="action-btn pause hidden">
+          <i data-lucide="pause"></i>
+          <span>Pause</span>
+        </button>
+      </section>
+
+      <!-- Active Session -->
+      <section id="active-session-card" class="active-session hidden">
+        <div class="session-info">
+          <span class="session-label">Current Session</span>
+          <span id="session-timer" class="session-time">00:00:00</span>
+        </div>
+      </section>
+
+      <!-- Recent Logs -->
+      <section class="logs-section">
+        <div class="section-header">
+          <h3>Recent Logs</h3>
+          <button type="button" id="view-all-btn" class="text-btn">View All</button>
+        </div>
+        <div id="logs-list" class="logs-list">
+          <!-- Logs will be injected here -->
+          <div class="empty-state">
+            <p>No logs found. Start your first session!</p>
+          </div>
+        </div>
+      </section>
+  </div>
+
+  <!-- Modals -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>Settings</h2>
+        <button type="button" id="close-settings" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="goal-hours-input">Total OJT Goal Hours</label>
+          <input type="number" id="goal-hours-input" value="600" placeholder="e.g. 600">
+        </div>
+        <button type="button" id="save-settings" class="primary-btn">Save Changes</button>
+
+        <hr />
+
+        <button type="button" id="export-db" class="secondary-btn">
+          <i data-lucide="download"></i>
+          Export SQLite DB
+        </button>
+        <button type="button" id="clear-data" class="danger-btn">
+          <i data-lucide="trash-2"></i>
+          Clear All Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
