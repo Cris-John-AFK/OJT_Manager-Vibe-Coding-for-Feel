@@ -20,8 +20,108 @@
     <div class="splash-content">
       <div class="splash-logo">DTR</div>
       <h1 class="splash-text">Welcome to DTR manager <br> <span>by Cris John</span></h1>
+      <h1 class="splash-text">Powered by<br> <span>Antigravity</span></h1>
       <div class="loader-bar">
         <div class="loader-progress"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Container -->
+  <div id="auth-container" class="auth-container hidden">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1 class="auth-logo">DTR</h1>
+        <p id="auth-subtitle">Login to your account</p>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="email@example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="primary-btn">Login</button>
+        <div class="divider"><span>OR</span></div>
+        <button type="button" id="google-login-btn" class="secondary-btn">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="18" height="18" alt="">
+          Login with Google
+        </button>
+        <p class="auth-footer">Don't have an account? <a href="#" id="to-signup">Sign Up</a></p>
+      </form>
+
+      <!-- Signup Form -->
+      <form id="signup-form" class="auth-form hidden">
+        <div class="form-group">
+          <label for="signup-name">Full Name</label>
+          <input type="text" id="signup-name" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+          <label for="signup-email">Email Address</label>
+          <input type="email" id="signup-email" placeholder="email@example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" placeholder="••••••••" required>
+        </div>
+        <div class="form-group">
+          <label>Account Type</label>
+          <div class="role-selector">
+            <label class="role-opt">
+              <input type="radio" name="role" value="student" checked>
+              <span>Student</span>
+            </label>
+            <label class="role-opt">
+              <input type="radio" name="role" value="teacher">
+              <span>Teacher</span>
+            </label>
+          </div>
+        </div>
+        <div id="class-code-group" class="form-group">
+          <label for="signup-class-code">Class Code (Optional)</label>
+          <input type="text" id="signup-class-code" placeholder="Enter teacher's code">
+        </div>
+        <button type="submit" class="primary-btn">Create Account</button>
+        <div class="divider"><span>OR</span></div>
+        <button type="button" id="google-signup-btn" class="secondary-btn">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="18" height="18" alt="">
+          Sign up with Google
+        </button>
+        <p class="auth-footer">Already have an account? <a href="#" id="to-login">Login</a></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Google Role Completion Modal -->
+  <div id="google-setup-modal" class="modal hidden">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>Complete Profile</h2>
+      </header>
+      <div class="modal-body">
+        <p class="modal-description">Please select your account type to continue.</p>
+        <div class="form-group" style="margin-top: 1rem;">
+          <label>Account Type</label>
+          <div class="role-selector">
+            <label class="role-opt">
+              <input type="radio" name="setup-role" value="student" checked>
+              <span>Student</span>
+            </label>
+            <label class="role-opt">
+              <input type="radio" name="setup-role" value="teacher">
+              <span>Teacher</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="setup-class-code">Class Code (Optional)</label>
+          <input type="text" id="setup-class-code" placeholder="Enter teacher's code">
+        </div>
+        <button type="button" id="save-setup-btn" class="primary-btn">Finish Setup</button>
       </div>
     </div>
   </div>
@@ -31,77 +131,149 @@
     <header class="app-header">
       <div class="header-content">
         <div class="user-info">
-          <span class="greeting">Hello, OJT Student</span>
+          <span id="user-role-badge" class="role-badge">Student</span>
+          <span class="greeting">Hello, <span id="user-display-name">---</span></span>
           <h2 class="app-title">DTR Dashboard</h2>
         </div>
-        <button type="button" id="settings-btn" class="icon-btn">
-          <i data-lucide="settings"></i>
-        </button>
+        <div class="header-actions">
+          <button type="button" id="logout-btn" class="icon-btn danger">
+            <i data-lucide="log-out"></i>
+          </button>
+          <button type="button" id="settings-btn" class="icon-btn">
+            <i data-lucide="settings"></i>
+          </button>
+        </div>
       </div>
     </header>
 
-    <main class="app-main">
-      <!-- Stats Card -->
-      <section class="stats-card">
-        <div class="progress-circle-container">
-          <svg class="progress-circle" viewBox="0 0 100 100">
-            <circle class="bg" cx="50" cy="50" r="45"></circle>
-            <circle id="progress-bar" class="progress" cx="50" cy="50" r="45"></circle>
-          </svg>
-          <div class="circle-content">
-            <span id="rendered-hours">0h</span>
-            <small>Rendered</small>
-          </div>
-        </div>
-        <div class="stats-info">
-          <div class="stat-item">
-            <span class="stat-label">Goal Hours</span>
-            <span id="goal-hours-display" class="stat-value">600h</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Remaining</span>
-            <span id="remaining-hours" class="stat-value">600h</span>
-          </div>
-        </div>
-      </section>
+    <!-- Teacher Dashboard -->
+    <section id="teacher-section" class="teacher-panel hidden">
+      <div class="panel-header">
+        <h3>Class Management</h3>
+        <div class="class-code-tag">Your Code: <span id="display-class-code">---</span></div>
+      </div>
+      <div id="students-list" class="students-list">
+        <div class="empty-state">No students have joined your class yet.</div>
+      </div>
+    </section>
 
-      <!-- Quick Actions -->
-      <section class="quick-actions">
-        <button type="button" id="time-in-btn" class="action-btn in">
-          <i data-lucide="play"></i>
-          <span>Time In</span>
-        </button>
-        <button type="button" id="time-out-btn" class="action-btn out disabled" disabled>
-          <i data-lucide="square"></i>
-          <span>Time Out</span>
-        </button>
-        <button type="button" id="pause-btn" class="action-btn pause hidden">
-          <i data-lucide="pause"></i>
-          <span>Pause</span>
-        </button>
-      </section>
+    <!-- Stats Card -->
+    <section class="stats-card">
+      <div class="progress-circle-container">
+        <svg class="progress-circle" viewBox="0 0 100 100">
+          <circle class="bg" cx="50" cy="50" r="45"></circle>
+          <circle id="progress-bar" class="progress" cx="50" cy="50" r="45"></circle>
+        </svg>
+        <div class="circle-content">
+          <span id="rendered-hours">0h</span>
+          <small>Rendered</small>
+        </div>
+      </div>
+      <div class="stats-info">
+        <div class="stat-item">
+          <span class="stat-label">Goal Hours</span>
+          <span id="goal-hours-display" class="stat-value">600h</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Remaining</span>
+          <span id="remaining-hours" class="stat-value">600h</span>
+        </div>
+      </div>
+    </section>
 
-      <!-- Active Session -->
-      <section id="active-session-card" class="active-session hidden">
-        <div class="session-info">
-          <span class="session-label">Current Session</span>
-          <span id="session-timer" class="session-time">00:00:00</span>
-        </div>
-      </section>
+    <!-- Quick Actions -->
+    <section class="quick-actions">
+      <button type="button" id="time-in-btn" class="action-btn in">
+        <i data-lucide="play"></i>
+        <span>Time In</span>
+      </button>
+      <button type="button" id="time-out-btn" class="action-btn out disabled" disabled>
+        <i data-lucide="square"></i>
+        <span>Time Out</span>
+      </button>
+      <button type="button" id="pause-btn" class="action-btn pause hidden">
+        <i data-lucide="pause"></i>
+        <span>Pause</span>
+      </button>
+    </section>
 
-      <!-- Recent Logs -->
-      <section class="logs-section">
-        <div class="section-header">
-          <h3>Recent Logs</h3>
-          <button type="button" id="view-all-btn" class="text-btn">View All</button>
+    <!-- Active Session -->
+    <section id="active-session-card" class="active-session hidden">
+      <div class="session-info">
+        <span class="session-label">Current Session</span>
+        <span id="session-timer" class="session-time">00:00:00</span>
+      </div>
+    </section>
+
+    <!-- Recent Logs -->
+    <section class="logs-section">
+      <div class="section-header">
+        <h3>Recent Logs</h3>
+        <button type="button" id="view-all-btn" class="text-btn">View All</button>
+      </div>
+      <div id="logs-list" class="logs-list">
+        <!-- Logs will be injected here -->
+        <div class="empty-state">
+          <p>No logs found. Start your first session!</p>
         </div>
-        <div id="logs-list" class="logs-list">
-          <!-- Logs will be injected here -->
-          <div class="empty-state">
-            <p>No logs found. Start your first session!</p>
-          </div>
+      </div>
+    </section>
+    </main>
+  </div>
+
+  <!-- Logout Confirmation Modal -->
+  <div id="logout-modal" class="modal hidden">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>Confirm Logout</h2>
+      </header>
+      <div class="modal-body">
+        <p class="modal-description">Are you sure you want to log out of your account?</p>
+        <div class="modal-actions">
+          <button type="button" id="cancel-logout" class="secondary-btn">Cancel</button>
+          <button type="button" id="confirm-logout-btn" class="primary-btn danger">Logout</button>
         </div>
-      </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div id="history-modal" class="modal hidden">
+    <div class="modal-content wide">
+      <header class="modal-header">
+        <h2>Full History</h2>
+        <button type="button" id="close-history" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+      <div class="modal-body">
+        <div id="history-logs-list" class="logs-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time Out Modal -->
+  <div id="timeout-modal" class="modal hidden">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>Finish Session</h2>
+        <button type="button" id="close-timeout" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+      <div class="modal-body">
+        <p class="modal-description">Great job! What did you accomplish in this session?</p>
+        <div class="form-group" style="margin-top: 1rem;">
+          <label for="log-notes-input">Session Notes (Optional)</label>
+          <textarea id="log-notes-input" placeholder="e.g. Worked on the admin dashboard, fixed bug in login..."
+            rows="4"></textarea>
+        </div>
+        <button type="button" id="confirm-timeout-btn" class="primary-btn">
+          <i data-lucide="check"></i>
+          Confirm Time Out
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Modals -->
@@ -130,6 +302,31 @@
           <i data-lucide="trash-2"></i>
           Clear All Data
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Detail Modal (For Teachers) -->
+  <div id="student-modal" class="modal hidden">
+    <div class="modal-content wide">
+      <header class="modal-header">
+        <h2 id="modal-student-name">Student Logs</h2>
+        <button type="button" id="close-student-modal" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+      <div class="modal-body">
+        <div class="student-stats-summary">
+          <div class="stat-mini">
+            <small>Rendered</small>
+            <span id="modal-student-rendered">0h</span>
+          </div>
+          <div class="stat-mini">
+            <small>Goal</small>
+            <span id="modal-student-goal">600h</span>
+          </div>
+        </div>
+        <div id="modal-student-logs" class="logs-list"></div>
       </div>
     </div>
   </div>

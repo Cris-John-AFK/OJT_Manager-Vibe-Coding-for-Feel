@@ -46,10 +46,13 @@ function createTables() {
                 status TEXT,
                 iso_start TEXT,
                 paused_at TEXT,
-                total_paused_ms INTEGER DEFAULT 0
+                total_paused_ms INTEGER DEFAULT 0,
+                notes TEXT
             );
             INSERT OR IGNORE INTO settings (key, value) VALUES ('goal_hours', '600');
         `);
+        // Migration: ensure notes column exists
+        try { db.run("ALTER TABLE logs ADD COLUMN notes TEXT"); } catch (e) { }
     } catch (err) {
         console.error("createTables error:", err);
     }
@@ -66,12 +69,13 @@ export async function saveDatabase() {
     }
 }
 
-export function getLogs() {
+export function getLogs(limit = 20) {
     try {
-        const res = db.exec("SELECT * FROM logs WHERE status = 'completed' ORDER BY id DESC LIMIT 20");
+        const query = limit ? `SELECT * FROM logs WHERE status = 'completed' ORDER BY id DESC LIMIT ${limit}` : `SELECT * FROM logs WHERE status = 'completed' ORDER BY id DESC`;
+        const res = db.exec(query);
         if (res.length === 0 || !res[0].values) return [];
         const colKey = Object.keys(res[0]).find(k => k !== 'values') || 'columns';
-        const columns = res[0][colKey] || ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms'];
+        const columns = res[0][colKey] || ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms', 'notes'];
 
         return res[0].values.map(row => {
             const obj = {};
@@ -95,9 +99,11 @@ export function addLog(date, timeIn, isoStart) {
     }
 }
 
-export function updateLog(id, timeOut, duration) {
+export function updateLog(id, timeOut, duration, notes = '') {
     try {
-        db.run(`UPDATE logs SET time_out = '${timeOut}', duration = ${duration}, status = 'completed' WHERE id = ${id}`);
+        // Use parameterized query-like strings to be safe with notes
+        const safeNotes = notes.replace(/'/g, "''");
+        db.run(`UPDATE logs SET time_out = '${timeOut}', duration = ${duration}, notes = '${safeNotes}', status = 'completed' WHERE id = ${id}`);
         saveDatabase();
     } catch (err) {
         console.error("updateLog ERROR:", err);
