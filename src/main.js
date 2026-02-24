@@ -41,21 +41,64 @@ let pendingConfirmAction = null;
 let teacherClasses = [];
 let currentTeacherClassCode = null;
 
-async function initMediaSession() {
-  Timer.addListener('PAUSE', () => { handlePauseResume(); });
-  Timer.addListener('TIMEOUT', () => { handleTimeOut(); });
-}
+let timerServiceStarted = false;
 
-async function updateMediaNotification(timerText) {
-  const active = getActiveSession();
-  const isPaused = active && active.status === 'paused';
+async function initMediaSession() {
+  try {
+    Timer.addListener('PAUSE', () => { handlePauseResume(); });
+    Timer.addListener('TIMEOUT', () => { handleTimeOut(); });
+  } catch (e) { console.log('Timer listener setup failed', e); }
 
   try {
-    const isNative = document.URL.indexOf('http://') === -1 && document.URL.indexOf('https://') === -1;
-    if (isNative || window.Capacitor?.isNative) {
-      await Timer.startTimer({ timerText: timerText, isPaused: isPaused });
+    // Create the channel explicitly to match native ID and ensure visibility
+    await LocalNotifications.createChannel({
+      id: 'dtr_timer_channel',
+      name: 'Active Session Timer',
+      importance: 5,
+      description: 'Shows active session timer with controls',
+      visibility: 1
+    });
+
+    await LocalNotifications.registerActionTypes({
+      types: [{
+        id: 'SESSION_CONTROLS',
+        actions: [
+          { id: 'pause_action', title: 'Pause / Resume' },
+          { id: 'timeout_action', title: 'Time Out', destructive: true }
+        ]
+      }]
+    });
+    LocalNotifications.addListener('localNotificationActionPerformed', (e) => {
+      if (e.actionId === 'pause_action') handlePauseResume();
+      if (e.actionId === 'timeout_action') handleTimeOut();
+    });
+  } catch (e) { console.log('LocalNotifications setup failed', e); }
+}
+
+async function startNativeTimer() {
+  timerServiceStarted = false;
+  // Initialize the native service
+  await updateMediaNotification('00:00:00');
+}
+
+async function updateMediaNotification(time) {
+  if (!window.Capacitor?.isNative) return;
+
+  try {
+    const active = getActiveSession();
+    const isPaused = active && active.status === 'paused';
+
+    if (!timerServiceStarted) {
+      // Must match @PluginMethod name in Java
+      await Timer.startNativeTimer({ time, isPaused });
+      timerServiceStarted = true;
+    } else {
+      await Timer.updateTimer({ time, isPaused });
     }
-  } catch (e) { console.log('Timer Plugin fallback', e); }
+  } catch (e) {
+    alert('DTR Error: ' + e.message);
+    console.error('Foreground Service failure:', e);
+  }
 }
 
 async function startApp() {
@@ -70,8 +113,26 @@ async function startApp() {
     updateAppUI();
     initMediaSession();
 
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
+    // Fire a simple test notification immediately so we know if the system works
+    if (window.Capacitor?.isNative) {
+      setTimeout(async () => {
+        try {
+          const permResult = await LocalNotifications.checkPermissions();
+          if (permResult.display !== 'granted') {
+            const reqResult = await LocalNotifications.requestPermissions();
+            showToast('Notif permission: ' + reqResult.display, reqResult.display === 'granted' ? 'success' : 'error');
+          }
+          await LocalNotifications.schedule({
+            notifications: [{
+              id: 1,
+              title: '✅ DTR Manager Ready',
+              body: 'Start a session and the timer will appear here!',
+            }]
+          });
+        } catch (e) {
+          showToast('Setup error: ' + (e.message || e), 'error');
+        }
+      }, 3000);
     }
 
     // Setup Auth Listener
@@ -736,8 +797,8 @@ function handleTimeIn() {
   const now = new Date();
   addLog(now.toLocaleDateString(), now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), now.toISOString());
 
-  // Initialize Media Session
-  updateMediaNotification('00:00:00');
+  // Start the native foreground service notification
+  startNativeTimer();
 
   updateAppUI();
 }
@@ -854,14 +915,10 @@ function updateStatsOnly(active) {
 function stopSessionTimer() {
   clearInterval(timerInterval);
   setText('session-timer', '00:00:00');
+  timerServiceStarted = false;
 
-  try {
-    Timer.stopTimer();
-  } catch (e) { }
-
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = 'none';
-  }
+  try { Timer.stopTimer(); } catch (e) { }
+  try { LocalNotifications.cancel({ notifications: [{ id: 9001 }] }); } catch (e) { }
 }
 
 function setText(id, txt) {
