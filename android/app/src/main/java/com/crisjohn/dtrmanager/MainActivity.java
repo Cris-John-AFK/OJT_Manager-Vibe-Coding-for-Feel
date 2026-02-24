@@ -45,9 +45,9 @@ public class MainActivity extends BridgeActivity {
         String pkg = getPackageName();
         if (pm != null && !pm.isIgnoringBatteryOptimizations(pkg)) {
             new AlertDialog.Builder(this)
-                .setTitle("⚡ Background Running")
-                .setMessage("To keep the timer running when your screen is off, please allow background running on the next screen.")
-                .setPositiveButton("Configure", (dialog, which) -> {
+                .setTitle("⚙️ Accuracy & Audit Protection")
+                .setMessage("PAHIBALO: To ensure your OJT hours are 100% accurate and protected from being cut off by the phone's power saving system, please allow 'Background Running' on the next screen. This ensures your official journal remains valid and your hours are fully tracked.")
+                .setPositiveButton("Proceed", (dialog, which) -> {
                     Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
                     intent.setData(Uri.parse("package:" + pkg));
                     startActivity(intent);
@@ -59,8 +59,8 @@ public class MainActivity extends BridgeActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (!Settings.canDrawOverlays(this)) {
                 new AlertDialog.Builder(this)
-                    .setTitle("🔔 Enable Notification Banners")
-                    .setMessage("To show the timer stopwatch at the top of your screen, please enable 'Display over other apps' for DTR Manager.")
+                    .setTitle("📌 Session Visibility")
+                    .setMessage("PAHIBALO: To prevent you from accidentally losing track of your active session, please enable 'Display over other apps'. This allows the system to show a tracking bar at the top of your screen, ensuring you never forget to Time Out for your own peace of mind.")
                     .setPositiveButton("Enable Now", (dialog, which) -> {
                         Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                 Uri.parse("package:" + getPackageName()));

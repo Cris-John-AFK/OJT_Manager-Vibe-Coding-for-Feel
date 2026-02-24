@@ -270,6 +270,10 @@
           <i data-lucide="square"></i>
           <span>Time Out</span>
         </button>
+        <button type="button" id="manual-entry-btn" class="action-btn manual" title="Add Past Hours">
+          <i data-lucide="edit-3"></i>
+          <span>Add Past</span>
+        </button>
         <button type="button" id="pause-btn" class="action-btn pause hidden">
           <i data-lucide="pause"></i>
           <span>Pause</span>
@@ -288,7 +292,13 @@
       <section class="logs-section">
         <div class="section-header">
           <h3>Recent Logs</h3>
-          <button type="button" id="view-all-btn" class="text-btn">View All</button>
+          <div class="header-btns">
+            <button type="button" id="download-journal-btn" class="icon-btn-text" title="Download Journal">
+              <i data-lucide="file-spreadsheet"></i>
+              <span>Journal</span>
+            </button>
+            <button type="button" id="view-all-btn" class="text-btn">View All</button>
+          </div>
         </div>
         <div id="logs-list" class="logs-list">
           <div class="empty-state">No sessions recorded yet.</div>
@@ -333,6 +343,42 @@
         <button type="button" id="confirm-timeout-btn" class="primary-btn">
           <i data-lucide="check"></i>
           Confirm Time Out
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- Manual Entry Modal -->
+  <div id="manual-modal" class="modal hidden">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>Add Past Hours</h2>
+        <button type="button" id="close-manual" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+      <div class="modal-body">
+        <p class="modal-description">Enter the details of your previous OJT session.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="manual-date">Date</label>
+            <input type="date" id="manual-date" required>
+          </div>
+          <div class="form-group">
+            <label for="manual-time-in">Time In</label>
+            <input type="time" id="manual-time-in" required>
+          </div>
+          <div class="form-group">
+            <label for="manual-time-out">Time Out</label>
+            <input type="time" id="manual-time-out" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="manual-notes">Activities Conducted</label>
+          <textarea id="manual-notes" placeholder="e.g. Encoded documents, filed folders..." rows="3"></textarea>
+        </div>
+        <button type="button" id="save-manual-btn" class="primary-btn">
+          <i data-lucide="check"></i>
+          Add to Journal
         </button>
       </div>
     </div>
@@ -453,7 +499,7 @@
 
   <div id="toast-container" class="toast-container"></div>
 
-  <div class="version-tag">v8.0.0 (System Chrono)</div>
+  <div class="version-tag">v8.1.1 (Pahibalo Update)</div>
 
   <script type="module" src="src/main.js"></script>
 </body>

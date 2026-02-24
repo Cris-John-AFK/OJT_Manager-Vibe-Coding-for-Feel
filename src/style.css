@@ -885,6 +885,14 @@ body {
   margin-bottom: 20px;
 }
 
+.action-btn.manual {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid var(--secondary);
+  color: var(--secondary);
+  box-shadow: none;
+}
+
+
 .action-btn {
   display: flex;
   flex-direction: column;
@@ -994,8 +1002,42 @@ body {
   border: none;
   color: var(--primary);
   font-weight: 600;
+  font-size: 0.875rem;
   cursor: pointer;
 }
+
+.header-btns {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.icon-btn-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  color: var(--primary);
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-btn-text i {
+  width: 14px;
+  height: 14px;
+}
+
+.icon-btn-text:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
 
 .logs-list {
   display: flex;
@@ -1116,6 +1158,23 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 400px) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #manual-date {
+    grid-column: span 2;
+  }
 }
 
 .modal-description {

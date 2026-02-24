@@ -5,7 +5,7 @@ import {
 import {
   initDatabase, getLogs, addLog, updateLog, getActiveSession,
   getSettings, updateSetting, getTotalRenderedHours, clearAllData,
-  exportDatabase, pauseLog, resumeLog
+  exportDatabase, pauseLog, resumeLog, insertManualLog
 } from './database';
 import { setupAuthListeners, loginUser, registerUser, logoutUser, loginWithGoogle } from './auth';
 import { db, auth } from './firebase';
@@ -205,6 +205,11 @@ function setupEventListeners() {
   listen('confirm-timeout-btn', confirmTimeOut);
   listen('close-student-modal', () => document.getElementById('student-modal')?.classList.add('hidden'));
   listen('close-history', () => document.getElementById('history-modal')?.classList.add('hidden'));
+
+  listen('manual-entry-btn', () => document.getElementById('manual-modal')?.classList.remove('hidden'));
+  listen('close-manual', () => document.getElementById('manual-modal')?.classList.add('hidden'));
+  listen('save-manual-btn', handleSaveManual);
+  listen('download-journal-btn', downloadJournal);
 
   listen('join-class-btn', async () => {
     const code = document.getElementById('join-class-input')?.value.trim();
@@ -447,6 +452,94 @@ function setupAuthUI() {
       window.location.reload(); // Refresh to catch new role
     }
   });
+}
+
+async function downloadJournal() {
+  const logs = getLogs(null); // Get all completed logs
+  if (logs.length === 0) {
+    showToast('No logs found to export!', 'error');
+    return;
+  }
+
+  // Sort logs by date ascending
+  logs.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  let csvContent = "Date,Time In,Time Out,Duration (Hours),Activities Conducted\n";
+
+  logs.forEach(log => {
+    const safeNotes = (log.notes || "No notes").replace(/"/g, '""'); // Escape double quotes for CSV
+    csvContent += `${log.date},${log.time_in},${log.time_out},${parseFloat(log.duration).toFixed(2)},"${safeNotes}"\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `OJT_Journal_Export_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast('Journal exported as CSV!', 'success');
+}
+
+async function handleSaveManual() {
+  const dateStr = document.getElementById('manual-date').value;
+  const timeInStr = document.getElementById('manual-time-in').value;
+  const timeOutStr = document.getElementById('manual-time-out').value;
+  const notes = document.getElementById('manual-notes').value;
+
+  if (!dateStr || !timeInStr || !timeOutStr) {
+    showToast('Please fill in all time fields!', 'error');
+    return;
+  }
+
+  // Calculate duration
+  const start = new Date(`${dateStr}T${timeInStr}`);
+  let end = new Date(`${dateStr}T${timeOutStr}`);
+
+  // Handle cross-midnight if time-out is less than time-in (unlikely but possible)
+  if (end < start) {
+    end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  const durationMs = end - start;
+  const durationHours = durationMs / (1000 * 60 * 60);
+
+  if (durationHours <= 0) {
+    showToast('End time must be after Start time!', 'error');
+    return;
+  }
+
+  const res = insertManualLog({
+    date: dateStr,
+    timeIn: formatAMPM(timeInStr),
+    timeOut: formatAMPM(timeOutStr),
+    duration: durationHours,
+    notes: notes || "Manual entry"
+  });
+
+  if (res) {
+    showToast('Hours added to journal!', 'success');
+    document.getElementById('manual-modal').classList.add('hidden');
+    // Reset form
+    document.getElementById('manual-date').value = '';
+    document.getElementById('manual-time-in').value = '';
+    document.getElementById('manual-time-out').value = '';
+    document.getElementById('manual-notes').value = '';
+
+    updateAppUI();
+    syncLocalDataToCloud();
+  }
+}
+
+function formatAMPM(time24) {
+  const [h, m] = time24.split(':');
+  let hours = parseInt(h);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  return `${hours}:${m} ${ampm}`;
 }
 
 function handleAuthLogin(userData) {
@@ -759,10 +852,12 @@ function updateAppUI() {
     const inBtn = document.getElementById('time-in-btn');
     const outBtn = document.getElementById('time-out-btn');
     const pauseBtn = document.getElementById('pause-btn');
+    const manualBtn = document.getElementById('manual-entry-btn');
     const card = document.getElementById('active-session-card');
 
     if (active) {
       inBtn?.classList.add('hidden');
+      manualBtn?.classList.add('hidden');
       outBtn?.classList.remove('disabled');
       outBtn?.classList.add('active');
       if (outBtn) outBtn.disabled = false;
@@ -781,6 +876,7 @@ function updateAppUI() {
       }
     } else {
       inBtn?.classList.remove('hidden');
+      manualBtn?.classList.remove('hidden');
       outBtn?.classList.add('disabled');
       outBtn?.classList.remove('active');
       if (outBtn) outBtn.disabled = true;

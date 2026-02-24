@@ -99,6 +99,19 @@ export function addLog(date, timeIn, isoStart) {
     }
 }
 
+export function insertManualLog({ date, timeIn, timeOut, duration, notes }) {
+    try {
+        const safeNotes = notes.replace(/'/g, "''");
+        db.run(`INSERT INTO logs (date, time_in, time_out, duration, notes, status) 
+                VALUES ('${date}', '${timeIn}', '${timeOut}', ${duration}, '${safeNotes}', 'completed')`);
+        saveDatabase();
+        return true;
+    } catch (err) {
+        console.error("insertManualLog ERROR:", err);
+        return false;
+    }
+}
+
 export function updateLog(id, timeOut, duration, notes = '') {
     try {
         // Use parameterized query-like strings to be safe with notes
