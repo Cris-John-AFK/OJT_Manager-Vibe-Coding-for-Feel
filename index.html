@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
   <title>DTR Manager - OJT Calculator</title>
   <!-- Google Fonts: Inter and Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -156,16 +157,47 @@
           <h3>Class Management</h3>
           <p id="student-count" class="student-count">0 students joined</p>
         </div>
-        <div class="class-code-box">
-          <span class="code-label">Class Code</span>
-          <div class="code-display">
+
+        <div id="class-selector" class="class-selector-container">
+          <!-- Class pills injected here -->
+          <button type="button" id="add-class-btn" class="class-pill add-class-btn">+ New Class</button>
+        </div>
+
+        <div class="class-code-card">
+          <div class="code-info">
+            <small>Current Class Code</small>
             <span id="display-class-code">---</span>
-            <button type="button" id="copy-code-btn" class="icon-btn-small">
-              <i data-lucide="copy"></i>
-            </button>
           </div>
+          <button type="button" id="copy-code-btn" class="copy-btn">
+            <i data-lucide="copy"></i>
+            <span>Copy Code</span>
+          </button>
         </div>
       </div>
+
+      <!-- Teacher Analytics Overview -->
+      <section id="teacher-analytics" class="analytics-grid">
+        <div class="analytic-card">
+          <span class="analytic-label">Class Avg</span>
+          <span id="class-avg" class="analytic-value">0h</span>
+        </div>
+        <div class="analytic-card">
+          <span class="analytic-label">Top Completion</span>
+          <span id="top-pct" class="analytic-value">0%</span>
+        </div>
+      </section>
+
+      <!-- Honor Roll Section -->
+      <section id="honor-roll-section" class="honor-roll-card hidden">
+        <div class="section-header">
+          <h3><i data-lucide="trophy"
+              style="width:18px;height:18px;color:#fbbf24;margin-right:8px;vertical-align:text-bottom;"></i>Honor Roll
+          </h3>
+        </div>
+        <div id="honor-roll-list" class="honor-roll-list">
+          <!-- Top 3 students injected here -->
+        </div>
+      </section>
 
       <div class="teacher-actions">
         <div class="search-box">
@@ -183,72 +215,86 @@
       </div>
 
       <div id="students-list" class="students-list">
-        <div class="empty-state">No students have joined your class yet.</div>
+        <div class="empty-state">No students joined yet.</div>
       </div>
     </section>
 
-    <!-- Stats Card -->
-    <section class="stats-card">
-      <div class="progress-circle-container">
-        <svg class="progress-circle" viewBox="0 0 100 100">
-          <circle class="bg" cx="50" cy="50" r="45"></circle>
-          <circle id="progress-bar" class="progress" cx="50" cy="50" r="45"></circle>
-        </svg>
-        <div class="circle-content">
-          <span id="rendered-hours">0h</span>
-          <small>Rendered</small>
+    <!-- Student Dashboard -->
+    <section id="student-section" class="student-panel hidden">
+      <!-- Student Analytics -->
+      <section id="student-analytics" class="analytics-grid">
+        <div class="analytic-card">
+          <span class="analytic-label">Avg Session</span>
+          <span id="avg-session" class="analytic-value">0h</span>
+          <span class="analytic-trend"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> +12%</span>
         </div>
-      </div>
-      <div class="stats-info">
-        <div class="stat-item">
-          <span class="stat-label">Goal Hours</span>
-          <span id="goal-hours-display" class="stat-value">600h</span>
+        <div class="analytic-card">
+          <span class="analytic-label">7-Day Total</span>
+          <span id="week-total" class="analytic-value">0h</span>
+          <span class="analytic-trend"><i data-lucide="calendar" style="width:12px;height:12px;"></i> Last 7d</span>
         </div>
-        <div class="stat-item">
-          <span class="stat-label">Remaining</span>
-          <span id="remaining-hours" class="stat-value">600h</span>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Quick Actions -->
-    <section class="quick-actions">
-      <button type="button" id="time-in-btn" class="action-btn in">
-        <i data-lucide="play"></i>
-        <span>Time In</span>
-      </button>
-      <button type="button" id="time-out-btn" class="action-btn out disabled" disabled>
-        <i data-lucide="square"></i>
-        <span>Time Out</span>
-      </button>
-      <button type="button" id="pause-btn" class="action-btn pause hidden">
-        <i data-lucide="pause"></i>
-        <span>Pause</span>
-      </button>
-    </section>
-
-    <!-- Active Session -->
-    <section id="active-session-card" class="active-session hidden">
-      <div class="session-info">
-        <span class="session-label">Current Session</span>
-        <span id="session-timer" class="session-time">00:00:00</span>
-      </div>
-    </section>
-
-    <!-- Recent Logs -->
-    <section class="logs-section">
-      <div class="section-header">
-        <h3>Recent Logs</h3>
-        <button type="button" id="view-all-btn" class="text-btn">View All</button>
-      </div>
-      <div id="logs-list" class="logs-list">
-        <!-- Logs will be injected here -->
-        <div class="empty-state">
-          <p>No logs found. Start your first session!</p>
+      <!-- Stats Card -->
+      <section class="stats-card">
+        <div class="progress-circle-container">
+          <svg class="progress-circle" viewBox="0 0 100 100">
+            <circle class="bg" cx="50" cy="50" r="45"></circle>
+            <circle id="progress-bar" class="progress" cx="50" cy="50" r="45"></circle>
+          </svg>
+          <div class="circle-content">
+            <span id="rendered-hours">0h</span>
+            <span id="rendered-percent" class="stat-percent">0%</span>
+            <small>Done</small>
+          </div>
         </div>
-      </div>
+        <div class="stats-info">
+          <div class="stat-item">
+            <span class="stat-label">Goal Hours</span>
+            <span id="goal-hours-display" class="stat-value">600h</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Remaining</span>
+            <span id="remaining-hours" class="stat-value">600h</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Actions -->
+      <section class="quick-actions">
+        <button type="button" id="time-in-btn" class="action-btn in">
+          <i data-lucide="play"></i>
+          <span>Time In</span>
+        </button>
+        <button type="button" id="time-out-btn" class="action-btn out disabled" disabled>
+          <i data-lucide="square"></i>
+          <span>Time Out</span>
+        </button>
+        <button type="button" id="pause-btn" class="action-btn pause hidden">
+          <i data-lucide="pause"></i>
+          <span>Pause</span>
+        </button>
+      </section>
+
+      <!-- Active Session -->
+      <section id="active-session-card" class="active-session hidden">
+        <div class="session-info">
+          <span class="session-label">Session Active</span>
+          <span id="session-timer" class="session-time">00:00:00</span>
+        </div>
+      </section>
+
+      <!-- Recent Logs -->
+      <section class="logs-section">
+        <div class="section-header">
+          <h3>Recent Logs</h3>
+          <button type="button" id="view-all-btn" class="text-btn">View All</button>
+        </div>
+        <div id="logs-list" class="logs-list">
+          <div class="empty-state">No sessions recorded yet.</div>
+        </div>
+      </section>
     </section>
-    </main>
   </div>
 
 
@@ -372,6 +418,23 @@
     </div>
   </div>
 
+  <!-- Create Class Modal -->
+  <div id="create-class-modal" class="modal hidden">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>Create New Class</h2>
+        <button type="button" id="close-create-class" class="icon-btn"><i data-lucide="x"></i></button>
+      </header>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Class Name</label>
+          <input type="text" id="new-class-name" placeholder="e.g. BSCS 4-B">
+        </div>
+        <button type="button" id="confirm-create-class" class="primary-btn">Create Class</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Generic Confirmation Modal -->
   <div id="confirm-modal" class="modal hidden">
     <div class="modal-content">
@@ -389,6 +452,8 @@
   </div>
 
   <div id="toast-container" class="toast-container"></div>
+
+  <div class="version-tag">v3.1.0 (Media Sync)</div>
 
   <script type="module" src="src/main.js"></script>
 </body>

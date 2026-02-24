@@ -86,3 +86,31 @@ export async function kickStudentFromClass(studentId) {
         return { success: false, error: e.message };
     }
 }
+
+export async function createClass(teacherId, className) {
+    if (!teacherId || !className) return { success: false };
+    try {
+        const classCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        await setDoc(doc(db, "classes", classCode), {
+            name: className,
+            teacherId: teacherId,
+            createdAt: new Date().toISOString()
+        });
+        return { success: true, classCode };
+    } catch (e) {
+        console.error("Create class error:", e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function fetchTeacherClasses(teacherId) {
+    if (!teacherId) return [];
+    try {
+        const q = query(collection(db, "classes"), where("teacherId", "==", teacherId));
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ code: d.id, ...d.data() }));
+    } catch (e) {
+        console.error("Fetch classes error:", e);
+        return [];
+    }
+}

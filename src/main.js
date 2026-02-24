@@ -1,6 +1,6 @@
 import './style.css'
 import {
-  createIcons, Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check, Copy, Search, RefreshCw, FileSpreadsheet, UserMinus, Sun, Moon, CheckCircle, AlertCircle
+  createIcons, Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check, Copy, Search, RefreshCw, FileSpreadsheet, UserMinus, Sun, Moon, CheckCircle, AlertCircle, TrendingUp, Calendar, Trophy
 } from 'lucide';
 import {
   initDatabase, getLogs, addLog, updateLog, getActiveSession,
@@ -9,16 +9,18 @@ import {
 } from './database';
 import { setupAuthListeners, loginUser, registerUser, logoutUser, loginWithGoogle } from './auth';
 import { db, auth } from './firebase';
-import { doc, updateDoc } from "firebase/firestore";
-import { syncLocalDataToCloud, fetchStudentsByClassCode, getStudentData, kickStudentFromClass } from './cloudSync';
-
+import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { syncLocalDataToCloud, fetchStudentsByClassCode, getStudentData, kickStudentFromClass, createClass, fetchTeacherClasses } from './cloudSync';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { registerPlugin } from '@capacitor/core';
+const Timer = registerPlugin('Timer');
 // Global Error Handler for the user
 window.onerror = function (msg, url, line) {
   console.error("Window Error:", msg, line);
   // Silent fail but logged
 };
 
-const ICON_LIB = { Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check, Copy, Search, RefreshCw, FileSpreadsheet, UserMinus, Sun, Moon, CheckCircle, AlertCircle };
+const ICON_LIB = { Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check, Copy, Search, RefreshCw, FileSpreadsheet, UserMinus, Sun, Moon, CheckCircle, AlertCircle, TrendingUp, Calendar };
 
 const listen = (id, fn) => {
   const el = document.getElementById(id);
@@ -36,32 +38,24 @@ let timerInterval = null;
 let silentAudio = null;
 let currentViewingStudentId = null;
 let pendingConfirmAction = null;
+let teacherClasses = [];
+let currentTeacherClassCode = null;
 
-function initMediaSession() {
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.setActionHandler('play', handlePauseResume);
-    navigator.mediaSession.setActionHandler('pause', handlePauseResume);
-    navigator.mediaSession.setActionHandler('stop', handleTimeOut);
-  }
+async function initMediaSession() {
+  Timer.addListener('PAUSE', () => { handlePauseResume(); });
+  Timer.addListener('TIMEOUT', () => { handleTimeOut(); });
 }
 
-function updateMediaNotification(timerText) {
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: `OJT Timer: ${timerText}`,
-      artist: 'DTR Manager',
-      album: 'Active Session',
-      artwork: [
-        { src: 'https://placehold.co/512x512/6366f1/ffffff?text=DTR', sizes: '512x512', type: 'image/png' }
-      ]
-    });
+async function updateMediaNotification(timerText) {
+  const active = getActiveSession();
+  const isPaused = active && active.status === 'paused';
 
-    // To keep the notification alive, we need to 'play' something silent
-    if (!silentAudio) {
-      silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhAAQACABAAAABkYXRhAgAAAAEA');
-      silentAudio.loop = true;
+  try {
+    const isNative = document.URL.indexOf('http://') === -1 && document.URL.indexOf('https://') === -1;
+    if (isNative || window.Capacitor?.isNative) {
+      await Timer.startTimer({ timerText: timerText, isPaused: isPaused });
     }
-  }
+  } catch (e) { console.log('Timer Plugin fallback', e); }
 }
 
 async function startApp() {
@@ -75,6 +69,10 @@ async function startApp() {
     initTheme();
     updateAppUI();
     initMediaSession();
+
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
 
     // Setup Auth Listener
     setupAuthListeners(handleAuthLogin, handleAuthLogout);
@@ -278,6 +276,32 @@ function setupEventListeners() {
       btn.classList.add('active');
     };
   });
+
+  // Create Class Modal Listeners
+  listen('close-create-class', () => {
+    document.getElementById('create-class-modal')?.classList.add('hidden');
+  });
+
+  listen('confirm-create-class', async () => {
+    const nameInput = document.getElementById('new-class-name');
+    const name = nameInput.value;
+    if (!name) return showToast("Please enter a class name", "error");
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const res = await createClass(user.uid, name);
+    if (res.success) {
+      showToast("Class created! Code: " + res.classCode, "success");
+      document.getElementById('create-class-modal')?.classList.add('hidden');
+      if (nameInput) nameInput.value = '';
+
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (snap.exists()) loadTeacherData({ uid: user.uid, ...snap.data() });
+    } else {
+      showToast(res.error, "error");
+    }
+  });
 }
 
 function setupAuthUI() {
@@ -377,39 +401,29 @@ function handleAuthLogin(userData) {
 
   // Role based visibility
   const isTeacher = userData.role === 'teacher';
-  const teacherSection = document.getElementById('teacher-section');
-  const studentMain = document.querySelector('.stats-card'); // Use this to toggle
-  const actions = document.querySelector('.quick-actions');
-  const activeSess = document.getElementById('active-session-card');
-  const logsSess = document.querySelector('.logs-section');
-
   if (isTeacher) {
-    teacherSection?.classList.remove('hidden');
-    studentMain?.classList.add('hidden');
-    actions?.classList.add('hidden');
-    activeSess?.classList.add('hidden');
-    logsSess?.classList.add('hidden');
+    document.getElementById('teacher-section')?.classList.remove('hidden');
+    document.getElementById('student-section')?.classList.add('hidden');
     loadTeacherData(userData);
   } else {
-    teacherSection?.classList.add('hidden');
-    studentMain?.classList.remove('hidden');
-    actions?.classList.remove('hidden');
-    logsSess?.classList.remove('hidden');
+    document.getElementById('teacher-section')?.classList.add('hidden');
+    document.getElementById('student-section')?.classList.remove('hidden');
+    updateAppUI();
+  }
 
-    // Student settings setup
-    document.getElementById('student-class-settings')?.classList.remove('hidden');
-    const hasClass = !!userData.classCode;
-    const noClassDiv = document.getElementById('no-class-view');
-    const hasClassDiv = document.getElementById('has-class-view');
+  // Student settings setup
+  document.getElementById('student-class-settings')?.classList.remove('hidden');
+  const hasClass = !!userData.classCode;
+  const noClassDiv = document.getElementById('no-class-view');
+  const hasClassDiv = document.getElementById('has-class-view');
 
-    if (hasClass) {
-      noClassDiv?.classList.add('hidden');
-      hasClassDiv?.classList.remove('hidden');
-      setText('current-class-display', userData.classCode);
-    } else {
-      noClassDiv?.classList.remove('hidden');
-      hasClassDiv?.classList.add('hidden');
-    }
+  if (hasClass) {
+    noClassDiv?.classList.add('hidden');
+    hasClassDiv?.classList.remove('hidden');
+    setText('current-class-display', userData.classCode);
+  } else {
+    noClassDiv?.classList.remove('hidden');
+    hasClassDiv?.classList.add('hidden');
   }
 
   // Update Header
@@ -428,27 +442,53 @@ function handleAuthLogin(userData) {
 }
 
 async function loadTeacherData(teacherData) {
-  const code = teacherData.uid.substring(0, 6).toUpperCase();
-  // Update the user's class code in Firestore if they don't have one
-  if (!teacherData.classCode) {
-    await updateDoc(doc(db, "users", teacherData.uid), { classCode: code });
+  const teacherId = teacherData.uid;
+
+  // 1. Fetch Classes
+  teacherClasses = await fetchTeacherClasses(teacherId);
+
+  // Create first class if none exist (backwards compatibility)
+  if (teacherClasses.length === 0) {
+    const defaultCode = teacherId.substring(0, 6).toUpperCase();
+    const res = await createClass(teacherId, "My First Class");
+    if (res.success) {
+      teacherClasses = [{ code: res.classCode, name: "My First Class" }];
+    }
   }
 
-  const actualCode = teacherData.classCode || code;
-  setText('display-class-code', actualCode);
+  // 2. Render Class Selector
+  const selector = document.getElementById('class-selector');
+  if (selector) {
+    const activeCode = currentTeacherClassCode || teacherClasses[0].code;
+    currentTeacherClassCode = activeCode;
 
-  const students = await fetchStudentsByClassCode(actualCode);
+    selector.innerHTML = teacherClasses.map(c => `
+      <div class="class-pill ${c.code === activeCode ? 'active' : ''}" onclick="window.switchTeacherClass('${c.code}')">
+        ${c.name}
+      </div>
+    `).join('') + '<button type="button" id="add-class-btn" class="class-pill add-class-btn">+ New Class</button>';
+
+    // Re-bind add button since we just nuked innerHTML
+    listen('add-class-btn', () => {
+      document.getElementById('create-class-modal')?.classList.remove('hidden');
+    });
+  }
+
+  // 3. Load Active Class Data
+  setText('display-class-code', currentTeacherClassCode);
+  const students = await fetchStudentsByClassCode(currentTeacherClassCode);
+
   setText('student-count', `${students.length} students joined`);
 
   const list = document.getElementById('students-list');
   if (!list) return;
 
   if (students.length === 0) {
-    list.innerHTML = `<div class="empty-state">No students found for class ${actualCode}</div>`;
+    list.innerHTML = `<div class="empty-state">No students found for class ${currentTeacherClassCode}</div>`;
   } else {
     list.innerHTML = students.map(s => {
       const goal = s.goalHours || 600;
-      const progress = (s.totalRendered / goal * 100).toFixed(0);
+      const progress = (s.totalRendered / goal * 100).toFixed(1);
       return `
         <div class="student-card" onclick="window.viewStudentDetail('${s.id}')">
           <div class="student-info">
@@ -460,7 +500,63 @@ async function loadTeacherData(teacherData) {
       `;
     }).join('');
   }
+
+  // 4. Analytics & Honor Roll Calculation
+  const honorSection = document.getElementById('honor-roll-section');
+  const honorList = document.getElementById('honor-roll-list');
+
+  if (students.length > 0) {
+    const totalHours = students.reduce((sum, s) => sum + s.totalRendered, 0);
+    const avgHours = totalHours / students.length;
+    const maxProgress = Math.max(...students.map(s => (s.totalRendered / (s.goalHours || 600) * 100)));
+
+    setText('class-avg', `${avgHours.toFixed(1)}h`);
+    setText('top-pct', `${maxProgress.toFixed(0)}%`);
+
+    // Top 3 for Honor Roll
+    const topStudents = [...students]
+      .filter(s => s.totalRendered > 0)
+      .sort((a, b) => b.totalRendered - a.totalRendered)
+      .slice(0, 3);
+
+    if (topStudents.length > 0 && honorSection && honorList) {
+      honorSection.classList.remove('hidden');
+      honorList.innerHTML = topStudents.map((s, i) => {
+        const goal = s.goalHours || 600;
+        const pct = (s.totalRendered / goal * 100).toFixed(0);
+        return `
+          <div class="honor-item">
+            <div class="honor-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</div>
+            <div class="honor-name">${s.name}</div>
+            <div class="honor-stats">
+              <span class="honor-hours">${s.totalRendered.toFixed(1)}h</span>
+              <span class="honor-pct">${pct}% Done</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      honorSection?.classList.add('hidden');
+    }
+  } else {
+    setText('class-avg', '0h');
+    setText('top-pct', '0%');
+    honorSection?.classList.add('hidden');
+  }
+
+  // Refresh icons for dynamically injected content (like the trophy)
+  createIcons();
 }
+
+window.switchTeacherClass = (code) => {
+  currentTeacherClassCode = code;
+  const user = auth.currentUser;
+  if (user) {
+    getDoc(doc(db, "users", user.uid)).then(snap => {
+      if (snap.exists()) loadTeacherData({ uid: user.uid, ...snap.data() });
+    });
+  }
+};
 
 async function exportClassReport() {
   const code = document.getElementById('display-class-code')?.textContent;
@@ -493,7 +589,7 @@ window.viewStudentDetail = async (studentId) => {
   if (!student) return;
 
   setText('modal-student-name', `${student.name}'s Progress`);
-  setText('modal-student-rendered', `${(student.totalRendered || 0).toFixed(2)}h`);
+  setText('modal-student-rendered', `${(student.totalRendered || 0).toFixed(2)}h (${((student.totalRendered || 0) / (student.goalHours || 600) * 100).toFixed(1)}%)`);
   setText('modal-student-goal', `${student.goalHours || 600}h`);
 
   const list = document.getElementById('modal-student-logs');
@@ -563,11 +659,23 @@ function updateAppUI() {
     setText('remaining-hours', `${Math.max(0, goal - totalDone).toFixed(2)}h`);
 
     const progress = goal > 0 ? Math.min(100, (totalDone / goal) * 100) : 0;
+    setText('rendered-percent', `${progress.toFixed(1)}%`);
     const bar = document.getElementById('progress-bar');
     if (bar) bar.style.strokeDashoffset = 283 - (283 * progress) / 100;
 
-    // Render Recent Logs
     const logs = getLogs();
+    // Analytics Calculation
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const weekLogs = logs.filter(l => new Date(l.date) >= sevenDaysAgo);
+    const weekTotal = weekLogs.reduce((sum, l) => sum + (parseFloat(l.duration) || 0), 0);
+    const avgSession = logs.length > 0 ? (completedHours / logs.length) : 0;
+
+    setText('avg-session', `${avgSession.toFixed(2)}h`);
+    setText('week-total', `${weekTotal.toFixed(2)}h`);
+
+    // Render Recent Logs
     const list = document.getElementById('logs-list');
     if (list) {
       if (logs.length === 0) {
@@ -627,6 +735,10 @@ function updateAppUI() {
 function handleTimeIn() {
   const now = new Date();
   addLog(now.toLocaleDateString(), now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), now.toISOString());
+
+  // Initialize Media Session
+  updateMediaNotification('00:00:00');
+
   updateAppUI();
 }
 
@@ -664,6 +776,11 @@ function confirmTimeOut() {
 
   updateLog(active.id, now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), hours, notes);
   document.getElementById('timeout-modal')?.classList.add('hidden');
+
+  try {
+    Timer.stopTimer();
+  } catch (e) { }
+
   updateAppUI();
   syncCloud(); // Sync after timeout
 }
@@ -673,17 +790,6 @@ function handlePauseResume() {
   if (!active) return;
   const iso = new Date().toISOString();
   active.status === 'paused' ? resumeLog(active.id, iso) : pauseLog(active.id, iso);
-
-  // Handle Media Playback State
-  if ('mediaSession' in navigator) {
-    if (active.status === 'paused') {
-      navigator.mediaSession.playbackState = 'playing';
-      if (silentAudio) silentAudio.play().catch(() => { });
-    } else {
-      navigator.mediaSession.playbackState = 'paused';
-      if (silentAudio) silentAudio.pause();
-    }
-  }
 
   updateAppUI();
 }
@@ -721,11 +827,6 @@ function runSessionTimer(active) {
     // Update System Notification
     updateMediaNotification(`${h}:${m}:${s}`);
   }, 1000);
-
-  if (silentAudio && active.status !== 'paused') {
-    silentAudio.play().catch(() => { });
-    navigator.mediaSession.playbackState = 'playing';
-  }
 }
 
 function updateStatsOnly(active) {
@@ -754,12 +855,12 @@ function stopSessionTimer() {
   clearInterval(timerInterval);
   setText('session-timer', '00:00:00');
 
+  try {
+    Timer.stopTimer();
+  } catch (e) { }
+
   if ('mediaSession' in navigator) {
     navigator.mediaSession.playbackState = 'none';
-    if (silentAudio) {
-      silentAudio.pause();
-      silentAudio.currentTime = 0;
-    }
   }
 }
 
