@@ -136,6 +136,9 @@
           <h2 class="app-title">DTR Dashboard</h2>
         </div>
         <div class="header-actions">
+          <button type="button" id="theme-toggle" class="icon-btn">
+            <i data-lucide="moon"></i>
+          </button>
           <button type="button" id="logout-btn" class="icon-btn danger">
             <i data-lucide="log-out"></i>
           </button>
@@ -149,9 +152,36 @@
     <!-- Teacher Dashboard -->
     <section id="teacher-section" class="teacher-panel hidden">
       <div class="panel-header">
-        <h3>Class Management</h3>
-        <div class="class-code-tag">Your Code: <span id="display-class-code">---</span></div>
+        <div class="header-titles">
+          <h3>Class Management</h3>
+          <p id="student-count" class="student-count">0 students joined</p>
+        </div>
+        <div class="class-code-box">
+          <span class="code-label">Class Code</span>
+          <div class="code-display">
+            <span id="display-class-code">---</span>
+            <button type="button" id="copy-code-btn" class="icon-btn-small">
+              <i data-lucide="copy"></i>
+            </button>
+          </div>
+        </div>
       </div>
+
+      <div class="teacher-actions">
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input type="text" id="student-search" placeholder="Search students...">
+        </div>
+        <div class="utility-btns">
+          <button type="button" id="refresh-teacher-btn" class="icon-btn-glass" title="Refresh">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+          <button type="button" id="export-class-btn" class="icon-btn-glass" title="Export Class Report">
+            <i data-lucide="file-spreadsheet"></i>
+          </button>
+        </div>
+      </div>
+
       <div id="students-list" class="students-list">
         <div class="empty-state">No students have joined your class yet.</div>
       </div>
@@ -221,21 +251,7 @@
     </main>
   </div>
 
-  <!-- Logout Confirmation Modal -->
-  <div id="logout-modal" class="modal hidden">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2>Confirm Logout</h2>
-      </header>
-      <div class="modal-body">
-        <p class="modal-description">Are you sure you want to log out of your account?</p>
-        <div class="modal-actions">
-          <button type="button" id="cancel-logout" class="secondary-btn">Cancel</button>
-          <button type="button" id="confirm-logout-btn" class="primary-btn danger">Logout</button>
-        </div>
-      </div>
-    </div>
-  </div>
+
 
   <!-- History Modal -->
   <div id="history-modal" class="modal hidden">
@@ -292,6 +308,25 @@
         </div>
         <button type="button" id="save-settings" class="primary-btn">Save Changes</button>
 
+        <!-- Student Class Management -->
+        <div id="student-class-settings" class="hidden">
+          <hr />
+          <div class="form-group">
+            <label>My Class</label>
+            <div id="no-class-view" class="class-join-box">
+              <input type="text" id="join-class-input" placeholder="Enter Class Code">
+              <button type="button" id="join-class-btn" class="primary-btn-mini">Join</button>
+            </div>
+            <div id="has-class-view" class="class-status-box hidden">
+              <span class="status-text">Joined: <strong id="current-class-display">---</strong></span>
+              <button type="button" id="leave-class-btn" class="secondary-btn-mini">
+                <i data-lucide="log-out"></i>
+                <span>Leave</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <hr />
 
         <button type="button" id="export-db" class="secondary-btn">
@@ -328,8 +363,32 @@
         </div>
         <div id="modal-student-logs" class="logs-list"></div>
       </div>
+      <footer class="modal-footer">
+        <button type="button" id="kick-student-btn" class="danger-btn">
+          <i data-lucide="user-minus"></i>
+          <span>Kick Student</span>
+        </button>
+      </footer>
     </div>
   </div>
+
+  <!-- Generic Confirmation Modal -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 id="confirm-title">Confirm Action</h2>
+      </header>
+      <div class="modal-body">
+        <p id="confirm-description" class="modal-description">Are you sure you want to proceed?</p>
+        <div class="modal-actions">
+          <button type="button" id="confirm-cancel-btn" class="secondary-btn">Cancel</button>
+          <button type="button" id="confirm-action-btn" class="primary-btn danger">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
 
   <script type="module" src="src/main.js"></script>
 </body>

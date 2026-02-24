@@ -1,5 +1,5 @@
 import { db, auth } from './firebase';
-import { doc, setDoc, collection, addDoc, query, where, getDocs, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, collection, addDoc, query, where, getDocs, deleteDoc, getDoc, updateDoc, deleteField } from "firebase/firestore";
 
 export async function syncLocalDataToCloud(logs, settings) {
     const user = auth.currentUser;
@@ -71,5 +71,18 @@ export async function fetchStudentsByClassCode(classCode) {
     } catch (e) {
         console.error("Error fetching students:", e);
         return [];
+    }
+}
+
+export async function kickStudentFromClass(studentId) {
+    if (!studentId) return { success: false };
+    try {
+        await updateDoc(doc(db, "users", studentId), {
+            classCode: ""
+        });
+        return { success: true };
+    } catch (e) {
+        console.error("Kick student error:", e);
+        return { success: false, error: e.message };
     }
 }

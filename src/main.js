@@ -1,6 +1,6 @@
 import './style.css'
 import {
-  createIcons, Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check
+  createIcons, Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check, Copy, Search, RefreshCw, FileSpreadsheet, UserMinus, Sun, Moon, CheckCircle, AlertCircle
 } from 'lucide';
 import {
   initDatabase, getLogs, addLog, updateLog, getActiveSession,
@@ -10,7 +10,7 @@ import {
 import { setupAuthListeners, loginUser, registerUser, logoutUser, loginWithGoogle } from './auth';
 import { db, auth } from './firebase';
 import { doc, updateDoc } from "firebase/firestore";
-import { syncLocalDataToCloud, fetchStudentsByClassCode, getStudentData } from './cloudSync';
+import { syncLocalDataToCloud, fetchStudentsByClassCode, getStudentData, kickStudentFromClass } from './cloudSync';
 
 // Global Error Handler for the user
 window.onerror = function (msg, url, line) {
@@ -18,7 +18,7 @@ window.onerror = function (msg, url, line) {
   // Silent fail but logged
 };
 
-const ICON_LIB = { Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check };
+const ICON_LIB = { Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check, Copy, Search, RefreshCw, FileSpreadsheet, UserMinus, Sun, Moon, CheckCircle, AlertCircle };
 
 const listen = (id, fn) => {
   const el = document.getElementById(id);
@@ -34,6 +34,8 @@ const listen = (id, fn) => {
 
 let timerInterval = null;
 let silentAudio = null;
+let currentViewingStudentId = null;
+let pendingConfirmAction = null;
 
 function initMediaSession() {
   if ('mediaSession' in navigator) {
@@ -70,6 +72,7 @@ async function startApp() {
 
     setupEventListeners();
     setupAuthUI();
+    initTheme();
     updateAppUI();
     initMediaSession();
 
@@ -103,11 +106,30 @@ function setupEventListeners() {
   listen('pause-btn', handlePauseResume);
   listen('settings-btn', () => document.getElementById('settings-modal')?.classList.remove('hidden'));
   listen('close-settings', () => document.getElementById('settings-modal')?.classList.add('hidden'));
-  listen('logout-btn', () => document.getElementById('logout-modal')?.classList.remove('hidden'));
-  listen('cancel-logout', () => document.getElementById('logout-modal')?.classList.add('hidden'));
-  listen('confirm-logout-btn', async () => {
-    await logoutUser();
-    document.getElementById('logout-modal')?.classList.add('hidden');
+
+  listen('logout-btn', () => {
+    showConfirm({
+      title: 'Confirm Logout',
+      desc: 'Are you sure you want to log out of your account?',
+      btnText: 'Logout',
+      onConfirm: async () => {
+        await logoutUser();
+      }
+    });
+  });
+
+  listen('confirm-cancel-btn', () => document.getElementById('confirm-modal')?.classList.add('hidden'));
+  listen('confirm-action-btn', async () => {
+    if (pendingConfirmAction) {
+      const btn = document.getElementById('confirm-action-btn');
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+      await pendingConfirmAction();
+      btn.disabled = false;
+      btn.textContent = 'Confirm';
+      document.getElementById('confirm-modal')?.classList.add('hidden');
+      pendingConfirmAction = null;
+    }
   });
 
   listen('save-settings', () => {
@@ -124,6 +146,95 @@ function setupEventListeners() {
   listen('confirm-timeout-btn', confirmTimeOut);
   listen('close-student-modal', () => document.getElementById('student-modal')?.classList.add('hidden'));
   listen('close-history', () => document.getElementById('history-modal')?.classList.add('hidden'));
+
+  listen('join-class-btn', async () => {
+    const code = document.getElementById('join-class-input')?.value.trim();
+    if (!code) return;
+    const user = auth.currentUser;
+    if (user) {
+      document.getElementById('join-class-btn').innerText = "...";
+      await updateDoc(doc(db, "users", user.uid), { classCode: code });
+      showToast("Successfully joined class " + code, "success");
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  });
+
+  listen('leave-class-btn', async () => {
+    const user = auth.currentUser;
+    if (user) {
+      showConfirm({
+        title: 'Leave Class',
+        desc: 'Are you sure you want to leave this class? Your teacher will no longer be able to track your progress.',
+        btnText: 'Leave Class',
+        onConfirm: async () => {
+          await updateDoc(doc(db, "users", user.uid), { classCode: "" });
+          window.location.reload();
+        }
+      });
+    }
+  });
+
+  listen('copy-code-btn', () => {
+    const code = document.getElementById('display-class-code')?.textContent;
+    if (code) {
+      navigator.clipboard.writeText(code);
+      const btn = document.getElementById('copy-code-btn');
+      if (btn) btn.innerHTML = '<i data-lucide="check" style="color:var(--success)"></i>';
+      createIcons({ icons: ICON_LIB });
+      setTimeout(() => {
+        if (btn) btn.innerHTML = '<i data-lucide="copy"></i>';
+        createIcons({ icons: ICON_LIB });
+      }, 2000);
+    }
+  });
+
+  listen('refresh-teacher-btn', () => {
+    const user = auth.currentUser;
+    if (user) {
+      // Re-fetch user data to get latest classCode if needed, then reload
+      window.location.reload();
+    }
+  });
+
+  listen('export-class-btn', () => {
+    exportClassReport();
+  });
+
+  listen('theme-toggle', () => {
+    const isLight = document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    updateThemeIcon();
+  });
+
+  listen('kick-student-btn', async () => {
+    if (!currentViewingStudentId) return;
+    showConfirm({
+      title: 'Kick Student',
+      desc: 'Are you sure you want to kick this student from your class? They will no longer appear in your list.',
+      btnText: 'Kick Student',
+      onConfirm: async () => {
+        const res = await kickStudentFromClass(currentViewingStudentId);
+        if (res.success) {
+          document.getElementById('student-modal')?.classList.add('hidden');
+          window.location.reload();
+        } else {
+          showToast("Failed to kick student: " + res.error, "error");
+        }
+      }
+    });
+  });
+
+  const searchInput = document.getElementById('student-search');
+  if (searchInput) {
+    searchInput.oninput = (e) => {
+      const term = e.target.value.toLowerCase();
+      const cards = document.querySelectorAll('.student-card');
+      cards.forEach(card => {
+        const name = card.querySelector('.student-name')?.textContent.toLowerCase() || '';
+        card.style.display = name.includes(term) ? 'flex' : 'none';
+      });
+    };
+  }
 
   listen('view-all-btn', () => {
     const allLogs = getLogs(null);
@@ -149,7 +260,14 @@ function setupEventListeners() {
   });
 
   listen('clear-data', () => {
-    if (confirm('Erase everything?')) clearAllData();
+    showConfirm({
+      title: 'Erase Everything?',
+      desc: 'This will permanently delete all your local logs and settings. This action cannot be undone.',
+      btnText: 'Erase All Data',
+      onConfirm: async () => {
+        clearAllData();
+      }
+    });
   });
 
   listen('export-db', exportDatabase);
@@ -194,7 +312,7 @@ function setupAuthUI() {
     const pass = document.getElementById('login-password').value;
     const res = await loginUser(email, pass);
 
-    if (!res.success) alert(res.error);
+    if (!res.success) showToast(res.error, "error");
     btn.textContent = oldText;
     btn.disabled = false;
   };
@@ -215,7 +333,7 @@ function setupAuthUI() {
 
     const res = await registerUser(email, pass, name, role, code);
 
-    if (!res.success) alert(res.error);
+    if (!res.success) showToast(res.error, "error");
     btn.textContent = oldText;
     btn.disabled = false;
   };
@@ -223,7 +341,7 @@ function setupAuthUI() {
   // Google Handlers
   const handleGoogle = async () => {
     const res = await loginWithGoogle();
-    if (!res.success) alert(res.error);
+    if (!res.success) showToast(res.error, "error");
   };
 
   listen('google-login-btn', handleGoogle);
@@ -277,6 +395,21 @@ function handleAuthLogin(userData) {
     studentMain?.classList.remove('hidden');
     actions?.classList.remove('hidden');
     logsSess?.classList.remove('hidden');
+
+    // Student settings setup
+    document.getElementById('student-class-settings')?.classList.remove('hidden');
+    const hasClass = !!userData.classCode;
+    const noClassDiv = document.getElementById('no-class-view');
+    const hasClassDiv = document.getElementById('has-class-view');
+
+    if (hasClass) {
+      noClassDiv?.classList.add('hidden');
+      hasClassDiv?.classList.remove('hidden');
+      setText('current-class-display', userData.classCode);
+    } else {
+      noClassDiv?.classList.remove('hidden');
+      hasClassDiv?.classList.add('hidden');
+    }
   }
 
   // Update Header
@@ -305,6 +438,8 @@ async function loadTeacherData(teacherData) {
   setText('display-class-code', actualCode);
 
   const students = await fetchStudentsByClassCode(actualCode);
+  setText('student-count', `${students.length} students joined`);
+
   const list = document.getElementById('students-list');
   if (!list) return;
 
@@ -312,12 +447,13 @@ async function loadTeacherData(teacherData) {
     list.innerHTML = `<div class="empty-state">No students found for class ${actualCode}</div>`;
   } else {
     list.innerHTML = students.map(s => {
-      const progress = (s.totalRendered / (s.goalHours || 600) * 100).toFixed(0);
+      const goal = s.goalHours || 600;
+      const progress = (s.totalRendered / goal * 100).toFixed(0);
       return `
         <div class="student-card" onclick="window.viewStudentDetail('${s.id}')">
           <div class="student-info">
             <span class="student-name">${s.name}</span>
-            <span class="student-progress">${s.totalRendered.toFixed(2)}h / ${s.goalHours || 600}h</span>
+            <span class="student-progress">${s.totalRendered.toFixed(2)}h / ${goal}h</span>
           </div>
           <div class="progress-pct">${progress}%</div>
         </div>
@@ -326,7 +462,33 @@ async function loadTeacherData(teacherData) {
   }
 }
 
+async function exportClassReport() {
+  const code = document.getElementById('display-class-code')?.textContent;
+  if (!code) return;
+
+  const students = await fetchStudentsByClassCode(code);
+  if (students.length === 0) {
+    showToast("No students to export.", "error");
+    return;
+  }
+
+  let csv = "Student Name,Email,Total Rendered,Goal,Progress %\n";
+  students.forEach(s => {
+    const goal = s.goalHours || 600;
+    const progress = (s.totalRendered / goal * 100).toFixed(2);
+    csv += `"${s.name}","${s.email}",${s.totalRendered.toFixed(2)},${goal},${progress}%\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `OJT_Class_Report_${code}.csv`;
+  a.click();
+}
+
 window.viewStudentDetail = async (studentId) => {
+  currentViewingStudentId = studentId;
   const student = await getStudentData(studentId);
   if (!student) return;
 
@@ -604,6 +766,57 @@ function stopSessionTimer() {
 function setText(id, txt) {
   const el = document.getElementById(id);
   if (el) el.textContent = txt;
+}
+
+function showConfirm({ title, desc, btnText, onConfirm }) {
+  setText('confirm-title', title);
+  setText('confirm-description', desc);
+  const actionBtn = document.getElementById('confirm-action-btn');
+  if (actionBtn) actionBtn.textContent = btnText || 'Confirm';
+
+  pendingConfirmAction = onConfirm;
+  document.getElementById('confirm-modal')?.classList.remove('hidden');
+}
+
+function showToast(message, type = "success") {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+
+  const icon = type === "success" ? "check-circle" : "alert-circle";
+  toast.innerHTML = `
+    <i data-lucide="${icon}"></i>
+    <span>${message}</span>
+  `;
+
+  container.appendChild(toast);
+  createIcons({ icons: ICON_LIB });
+
+  // Slide up and fade in are handled by CSS animation
+
+  setTimeout(() => {
+    toast.classList.add('leaving');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light') {
+    document.body.classList.add('light-mode');
+  }
+  updateThemeIcon();
+}
+
+function updateThemeIcon() {
+  const btn = document.getElementById('theme-toggle');
+  if (btn) {
+    const isLight = document.body.classList.contains('light-mode');
+    btn.innerHTML = `<i data-lucide="${isLight ? 'sun' : 'moon'}"></i>`;
+    createIcons({ icons: ICON_LIB });
+  }
 }
 
 startApp();

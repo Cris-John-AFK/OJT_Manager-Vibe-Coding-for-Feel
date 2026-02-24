@@ -9,8 +9,50 @@
   --success: #22c55e;
   --danger: #ef4444;
   --glass-border: rgba(255, 255, 255, 0.1);
-  --font-main: 'Inter', sans-serif;
-  --font-heading: 'Outfit', sans-serif;
+  --font-main: 'Inter',
+    sans-serif;
+  --font-heading: 'Outfit',
+    sans-serif;
+}
+
+body.light-mode {
+  --bg-dark: #f1f5f9;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --glass-border: rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .auth-container,
+body.light-mode .splash-screen {
+  background: radial-gradient(circle at center, #e2e8f0, #f1f5f9);
+}
+
+body.light-mode .auth-card,
+body.light-mode .stats-card,
+body.light-mode .modal-content,
+body.light-mode .teacher-panel,
+body.light-mode .active-session {
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .form-group input,
+body.light-mode .search-box,
+body.light-mode .stat-mini {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+body.light-mode .log-item {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+body.light-mode .secondary-btn,
+body.light-mode .icon-btn-glass {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
 }
 
 * {
@@ -269,16 +311,108 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 2rem;
+}
+
+.student-count {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.class-code-box {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  text-align: right;
+}
+
+.code-label {
+  display: block;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.code-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#display-class-code {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 1px;
+}
+
+.teacher-actions {
+  display: flex;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
-.class-code-tag {
-  background: var(--primary);
-  padding: 4px 12px;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+.search-box {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.search-box input {
+  background: none;
+  border: none;
+  color: white;
+  padding: 10px 0;
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.search-box input:focus {
+  outline: none;
+}
+
+.utility-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn-glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-btn-glass:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.icon-btn-small {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.icon-btn-small:hover {
+  color: var(--primary);
 }
 
 .students-list {
@@ -348,6 +482,18 @@ body {
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--primary);
+}
+
+.modal-footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal-footer .danger-btn {
+  max-width: 200px;
 }
 
 .app-header {
@@ -715,6 +861,10 @@ body {
   backdrop-filter: blur(4px);
 }
 
+#confirm-modal {
+  z-index: 3000;
+}
+
 .modal-content {
   background: #1e293b;
   width: 100%;
@@ -798,6 +948,65 @@ body {
   transform: scale(0.98);
 }
 
+.primary-btn-mini {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-btn-mini {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  border: 1px solid var(--glass-border);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+
+.secondary-btn-mini i {
+  width: 14px;
+  height: 14px;
+}
+
+.class-join-box {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.class-join-box input {
+  margin-bottom: 0 !important;
+  flex: 1;
+}
+
+.class-status-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+}
+
+.status-text {
+  font-size: 0.875rem;
+}
+
+.text-btn.danger {
+  color: var(--danger);
+  font-size: 0.75rem;
+}
+
 .modal-actions {
   display: flex;
   gap: 1rem;
@@ -857,4 +1066,68 @@ hr {
   border: none;
   border-top: 1px solid var(--glass-border);
   margin: 1.5rem 0;
+}
+
+/* Toast System */
+.toast-container {
+  position: fixed;
+  bottom: 80px;
+  /* Above bottom nav */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+  width: 90%;
+  max-width: 400px;
+}
+
+.toast {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideUpFade 0.3s ease-out;
+  pointer-events: auto;
+}
+
+.toast.success {
+  border-left: 4px solid var(--success);
+}
+
+.toast.error {
+  border-left: 4px solid var(--danger);
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.toast.leaving {
+  animation: fadeOut 0.3s forwards;
 }
