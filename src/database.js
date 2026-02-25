@@ -9,11 +9,28 @@ export async function initDatabase() {
     if (db) return db;
 
     try {
-        SQL = await initSqlJs({ locateFile: () => `sql-wasm.wasm` });
+        console.log("Initializing SQL.js...");
+        // Use CDN fallback to ensure WASM loads even if local path fails on Android
+        const wasmPath = `https://sql.js.org/dist/sql-wasm.wasm`;
+
+        try {
+            SQL = await initSqlJs({
+                locateFile: (file) => file.endsWith('.wasm') ? wasmPath : file
+            });
+            console.log("SQL.js loaded from CDN fallback.");
+        } catch (wasmErr) {
+            console.warn("CDN WASM failed, trying local...");
+            SQL = await initSqlJs({
+                locateFile: (file) => file
+            });
+        }
+
+        console.log("SQL.js loaded, checking localForage...");
         const savedDb = await localforage.getItem(DB_KEY);
 
         if (savedDb) {
             try {
+                console.log("Found existing DB, size: " + savedDb.byteLength);
                 db = new SQL.Database(new Uint8Array(savedDb));
                 createTables(); // Ensure schema is up to date safely
             } catch (e) {
@@ -25,15 +42,26 @@ export async function initDatabase() {
             console.log("No existing DB found, creating new one.");
             db = new SQL.Database();
             createTables();
+            await saveDatabase(); // Persist initial state
         }
+        console.log("Database Ready!");
     } catch (err) {
-        console.error("FATAL initDatabase Error:", err);
+        console.error("CRITICAL initDatabase Error:", err);
+        // Emergency Fallback: If WASM fails, try one more time or use memory DB
+        if (SQL) {
+            db = new SQL.Database();
+            createTables();
+        } else {
+            // Last resort: If even SQL didn't load, we can't do much but wait
+            // but we'll try to re-init after a delay if asked.
+        }
     }
 
     return db;
 }
 
 function createTables() {
+    if (!db) return;
     try {
         db.run(`
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
@@ -65,6 +93,7 @@ export async function saveDatabase() {
         try {
             const data = db.export();
             await localforage.setItem(DB_KEY, data.buffer);
+            console.log("Local database saved successfully.");
         } catch (err) {
             console.error("Save error:", err);
         }
@@ -72,6 +101,7 @@ export async function saveDatabase() {
 }
 
 export function getLogs(limit = 20) {
+    if (!db) return [];
     try {
         const query = limit
             ? `SELECT * FROM logs WHERE status = 'completed' AND deleted_at IS NULL ORDER BY id DESC LIMIT ${limit}`
@@ -92,6 +122,7 @@ export function getLogs(limit = 20) {
 }
 
 export function getArchivedLogs() {
+    if (!db) return [];
     try {
         const res = db.exec(`SELECT * FROM logs WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`);
         if (res.length === 0 || !res[0].values) return [];
@@ -109,6 +140,7 @@ export function getArchivedLogs() {
 }
 
 export function archiveLog(id) {
+    if (!db) return false;
     try {
         const isoNow = new Date().toISOString();
         db.run(`UPDATE logs SET deleted_at = '${isoNow}' WHERE id = ${id}`);
@@ -121,6 +153,7 @@ export function archiveLog(id) {
 }
 
 export function recoverLog(id) {
+    if (!db) return false;
     try {
         db.run(`UPDATE logs SET deleted_at = NULL WHERE id = ${id}`);
         saveDatabase();
@@ -132,6 +165,7 @@ export function recoverLog(id) {
 }
 
 export function permanentlyDeleteLog(id) {
+    if (!db) return false;
     try {
         db.run(`DELETE FROM logs WHERE id = ${id}`);
         saveDatabase();
@@ -143,6 +177,7 @@ export function permanentlyDeleteLog(id) {
 }
 
 export function cleanupOldArchivedLogs() {
+    if (!db) return;
     try {
         // Find logs deleted more than 30 days ago
         const thirtyDaysAgo = new Date();
@@ -158,18 +193,25 @@ export function cleanupOldArchivedLogs() {
 }
 
 export function addLog(date, timeIn, isoStart) {
-    // ... existing addLog ...
+    if (!db) {
+        console.error("Database not initialized during addLog!");
+        return false;
+    }
     try {
         console.log("addLog called with:", date, timeIn, isoStart);
         db.run(`INSERT INTO logs (date, time_in, status, iso_start) VALUES ('${date}', '${timeIn}', 'active', '${isoStart}')`);
         saveDatabase();
         console.log("addLog success!");
+        return true;
     } catch (err) {
         console.error("addLog ERROR:", err);
+        return false;
     }
 }
 
+
 export function insertManualLog({ date, timeIn, timeOut, duration, notes }) {
+    if (!db) return false;
     try {
         const safeNotes = (notes || "").replace(/'/g, "''");
         db.run(`INSERT INTO logs (date, time_in, time_out, duration, notes, status) 
@@ -183,6 +225,7 @@ export function insertManualLog({ date, timeIn, timeOut, duration, notes }) {
 }
 
 export function updateLog(id, updates) {
+    if (!db) return;
     try {
         const fields = [];
         if (updates.time_out) fields.push(`time_out = '${updates.time_out}'`);
@@ -203,6 +246,7 @@ export function updateLog(id, updates) {
 }
 // ... rest of the functions ...
 export function getActiveSession() {
+    if (!db) return null;
     try {
         const res = db.exec("SELECT * FROM logs WHERE status IN ('active', 'paused') ORDER BY id DESC LIMIT 1");
         if (res.length === 0 || !res[0].values || res[0].values.length === 0) return null;
@@ -220,6 +264,7 @@ export function getActiveSession() {
 }
 
 export function getSettings() {
+    if (!db) return { goal_hours: '600' };
     try {
         const res = db.exec("SELECT * FROM settings");
         const settings = {};
@@ -233,6 +278,7 @@ export function getSettings() {
 }
 
 export function updateSetting(key, value) {
+    if (!db) return;
     try {
         db.run(`INSERT OR REPLACE INTO settings (key, value) VALUES ('${key}', '${value}')`);
         saveDatabase();
@@ -242,6 +288,7 @@ export function updateSetting(key, value) {
 }
 
 export function getTotalRenderedHours() {
+    if (!db) return 0;
     try {
         const res = db.exec("SELECT SUM(duration) FROM logs WHERE status = 'completed' AND deleted_at IS NULL");
         return res.length > 0 && res[0].values[0][0] ? parseFloat(res[0].values[0][0]) : 0;

@@ -39,7 +39,12 @@ let timerServiceStarted = false;
 async function startApp() {
   console.log("DTR App Initializing...");
   try {
-    await initDatabase();
+    const database = await initDatabase();
+    if (!database) {
+      console.warn("Database failed to init, retrying in 2s...");
+      setTimeout(() => initDatabase().then(updateAppUI), 2000);
+    }
+
     cleanupOldArchivedLogs();
     setupEventListeners();
     setupAuthUI();
@@ -50,6 +55,30 @@ async function startApp() {
 
     setupAuthListeners(handleAuthLogin, handleAuthLogout);
 
+    // Set explicit persistence to ensure login stays across restarts
+    const { setPersistence, browserLocalPersistence } = await import("firebase/auth");
+    await setPersistence(auth, browserLocalPersistence);
+
+    // Initial Sync after database is ready
+    setTimeout(() => syncCloud(), 3000);
+
+    // ... rest of startApp ...
+
+
+    // Auto-save interval (every 5 minutes) as fallback
+    setInterval(() => saveDatabase(), 5 * 60 * 1000);
+
+    // Connectivity Listeners
+    window.addEventListener('online', () => {
+      showToast("You're back online! Syncing...", "info");
+      syncCloud();
+      updateSyncIndicator(true);
+    });
+    window.addEventListener('offline', () => {
+      showToast("You're offline. Saving locally.", "warning");
+      updateSyncIndicator(false);
+    });
+
     const splash = document.getElementById('splash-screen');
     setTimeout(() => {
       if (splash) splash.style.opacity = '0';
@@ -58,6 +87,19 @@ async function startApp() {
 
   } catch (error) { console.error("App Crash:", error); }
 }
+
+function updateSyncIndicator(isOnline) {
+  const dot = document.getElementById('sync-indicator');
+  if (!dot) return;
+  if (isOnline) {
+    dot.style.background = 'var(--success)';
+    dot.title = "Cloud Synced";
+  } else {
+    dot.style.background = 'var(--warning)';
+    dot.title = "Offline (Saved Locally)";
+  }
+}
+
 
 function setupViewNavigation() {
   const tabs = document.querySelectorAll('.nav-tab');
@@ -471,17 +513,36 @@ function formatMs(ms) {
   return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
-function handleTimeIn() {
-  const now = new Date();
-  addLog(now.toLocaleDateString(), now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), now.toISOString());
-  startNativeTimer(); updateAppUI(); showToast('Time In recorded!', 'success');
-}
+// Duplicate function removed
+
 
 function handlePauseResume() {
   const active = getActiveSession();
   if (active.status === 'paused') resumeLog(active.id, new Date().toISOString()); else pauseLog(active.id, new Date().toISOString());
   updateAppUI();
 }
+
+async function handleTimeIn() {
+  const now = new Date();
+
+  // Attempt to re-init if db is missing
+  let success = addLog(now.toLocaleDateString(), now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), now.toISOString());
+
+  if (!success) {
+    console.log("DB missing, trying to re-init...");
+    await initDatabase();
+    success = addLog(now.toLocaleDateString(), now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), now.toISOString());
+  }
+
+  if (success) {
+    startNativeTimer();
+    updateAppUI();
+    showToast('Time In recorded!', 'success');
+  } else {
+    showToast('Database Error: Tap Settings > Recycle Bin > Delete All Data to reset.', 'error');
+  }
+}
+
 
 async function confirmTimeOut() {
   const active = getActiveSession(); if (!active) return;
@@ -644,8 +705,16 @@ window.viewStudentDetail = async (id) => {
 };
 
 async function syncCloud() {
-  const logs = getLogs(); const settings = getSettings(); await syncLocalDataToCloud(logs, settings);
+  if (!navigator.onLine) {
+    updateSyncIndicator(false);
+    return;
+  }
+  const logs = getLogs();
+  const settings = getSettings();
+  const res = await syncLocalDataToCloud(logs, settings);
+  updateSyncIndicator(res.success);
 }
+
 
 async function startNativeTimer() {
   timerServiceStarted = false; await updateMediaNotification('00:00:00');
