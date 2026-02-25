@@ -47,12 +47,14 @@ function createTables() {
                 iso_start TEXT,
                 paused_at TEXT,
                 total_paused_ms INTEGER DEFAULT 0,
-                notes TEXT
+                notes TEXT,
+                deleted_at TEXT
             );
             INSERT OR IGNORE INTO settings (key, value) VALUES ('goal_hours', '600');
         `);
-        // Migration: ensure notes column exists
+        // Migration: ensure notes and deleted_at columns exist
         try { db.run("ALTER TABLE logs ADD COLUMN notes TEXT"); } catch (e) { }
+        try { db.run("ALTER TABLE logs ADD COLUMN deleted_at TEXT"); } catch (e) { }
     } catch (err) {
         console.error("createTables error:", err);
     }
@@ -71,11 +73,12 @@ export async function saveDatabase() {
 
 export function getLogs(limit = 20) {
     try {
-        const query = limit ? `SELECT * FROM logs WHERE status = 'completed' ORDER BY id DESC LIMIT ${limit}` : `SELECT * FROM logs WHERE status = 'completed' ORDER BY id DESC`;
+        const query = limit
+            ? `SELECT * FROM logs WHERE status = 'completed' AND deleted_at IS NULL ORDER BY id DESC LIMIT ${limit}`
+            : `SELECT * FROM logs WHERE status = 'completed' AND deleted_at IS NULL ORDER BY id DESC`;
         const res = db.exec(query);
         if (res.length === 0 || !res[0].values) return [];
-        const colKey = Object.keys(res[0]).find(k => k !== 'values') || 'columns';
-        const columns = res[0][colKey] || ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms', 'notes'];
+        const columns = res[0].columns || ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms', 'notes', 'deleted_at'];
 
         return res[0].values.map(row => {
             const obj = {};
@@ -88,7 +91,74 @@ export function getLogs(limit = 20) {
     }
 }
 
+export function getArchivedLogs() {
+    try {
+        const res = db.exec(`SELECT * FROM logs WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`);
+        if (res.length === 0 || !res[0].values) return [];
+        const columns = res[0].columns || ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms', 'notes', 'deleted_at'];
+
+        return res[0].values.map(row => {
+            const obj = {};
+            columns.forEach((col, i) => obj[col] = row[i]);
+            return obj;
+        });
+    } catch (e) {
+        console.error("getArchivedLogs error:", e);
+        return [];
+    }
+}
+
+export function archiveLog(id) {
+    try {
+        const isoNow = new Date().toISOString();
+        db.run(`UPDATE logs SET deleted_at = '${isoNow}' WHERE id = ${id}`);
+        saveDatabase();
+        return true;
+    } catch (e) {
+        console.error("archiveLog error:", e);
+        return false;
+    }
+}
+
+export function recoverLog(id) {
+    try {
+        db.run(`UPDATE logs SET deleted_at = NULL WHERE id = ${id}`);
+        saveDatabase();
+        return true;
+    } catch (e) {
+        console.error("recoverLog error:", e);
+        return false;
+    }
+}
+
+export function permanentlyDeleteLog(id) {
+    try {
+        db.run(`DELETE FROM logs WHERE id = ${id}`);
+        saveDatabase();
+        return true;
+    } catch (e) {
+        console.error("permanentlyDeleteLog error:", e);
+        return false;
+    }
+}
+
+export function cleanupOldArchivedLogs() {
+    try {
+        // Find logs deleted more than 30 days ago
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const isoLimit = thirtyDaysAgo.toISOString();
+
+        db.run(`DELETE FROM logs WHERE deleted_at < '${isoLimit}'`);
+        saveDatabase();
+        console.log("Cleanup of old archived logs completed.");
+    } catch (e) {
+        console.error("cleanupOldArchivedLogs error:", e);
+    }
+}
+
 export function addLog(date, timeIn, isoStart) {
+    // ... existing addLog ...
     try {
         console.log("addLog called with:", date, timeIn, isoStart);
         db.run(`INSERT INTO logs (date, time_in, status, iso_start) VALUES ('${date}', '${timeIn}', 'active', '${isoStart}')`);
@@ -101,7 +171,7 @@ export function addLog(date, timeIn, isoStart) {
 
 export function insertManualLog({ date, timeIn, timeOut, duration, notes }) {
     try {
-        const safeNotes = notes.replace(/'/g, "''");
+        const safeNotes = (notes || "").replace(/'/g, "''");
         db.run(`INSERT INTO logs (date, time_in, time_out, duration, notes, status) 
                 VALUES ('${date}', '${timeIn}', '${timeOut}', ${duration}, '${safeNotes}', 'completed')`);
         saveDatabase();
@@ -112,24 +182,32 @@ export function insertManualLog({ date, timeIn, timeOut, duration, notes }) {
     }
 }
 
-export function updateLog(id, timeOut, duration, notes = '') {
+export function updateLog(id, updates) {
     try {
-        // Use parameterized query-like strings to be safe with notes
-        const safeNotes = notes.replace(/'/g, "''");
-        db.run(`UPDATE logs SET time_out = '${timeOut}', duration = ${duration}, notes = '${safeNotes}', status = 'completed' WHERE id = ${id}`);
-        saveDatabase();
+        const fields = [];
+        if (updates.time_out) fields.push(`time_out = '${updates.time_out}'`);
+        if (updates.duration !== undefined) fields.push(`duration = ${updates.duration}`);
+        if (updates.notes !== undefined) {
+            const safeNotes = updates.notes.replace(/'/g, "''");
+            fields.push(`notes = '${safeNotes}'`);
+        }
+        if (updates.status) fields.push(`status = '${updates.status}'`);
+
+        if (fields.length > 0) {
+            db.run(`UPDATE logs SET ${fields.join(', ')} WHERE id = ${id}`);
+            saveDatabase();
+        }
     } catch (err) {
         console.error("updateLog ERROR:", err);
     }
 }
-
+// ... rest of the functions ...
 export function getActiveSession() {
     try {
         const res = db.exec("SELECT * FROM logs WHERE status IN ('active', 'paused') ORDER BY id DESC LIMIT 1");
         if (res.length === 0 || !res[0].values || res[0].values.length === 0) return null;
 
-        const colKey = Object.keys(res[0]).find(k => k !== 'values') || 'columns';
-        const columns = res[0][colKey] || ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms'];
+        const columns = res[0].columns || ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms'];
 
         const row = res[0].values[0];
         const obj = {};
@@ -165,7 +243,7 @@ export function updateSetting(key, value) {
 
 export function getTotalRenderedHours() {
     try {
-        const res = db.exec("SELECT SUM(duration) FROM logs WHERE status = 'completed'");
+        const res = db.exec("SELECT SUM(duration) FROM logs WHERE status = 'completed' AND deleted_at IS NULL");
         return res.length > 0 && res[0].values[0][0] ? parseFloat(res[0].values[0][0]) : 0;
     } catch (e) { return 0; }
 }

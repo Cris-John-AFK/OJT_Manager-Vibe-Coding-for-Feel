@@ -16,490 +16,447 @@
 </head>
 
 <body>
+  <!-- Toast Notifications (Moved to top) -->
+  <div id="toast-container" class="toast-container-top"></div>
+
   <!-- Splash Screen -->
   <div id="splash-screen" class="splash-screen">
     <div class="splash-content">
       <div class="splash-logo">DTR</div>
-      <h1 class="splash-text">Welcome to DTR manager <br> <span>by Cris John</span></h1>
-      <h1 class="splash-text">Powered by<br> <span>Antigravity</span></h1>
+      <h1 class="splash-text">OJT Manager <br> <span>by Cris John</span></h1>
       <div class="loader-bar">
         <div class="loader-progress"></div>
       </div>
     </div>
   </div>
 
-  <!-- Auth Container -->
-  <div id="auth-container" class="auth-container hidden">
-    <div class="auth-card">
-      <div class="auth-header">
-        <h1 class="auth-logo">DTR</h1>
-        <p id="auth-subtitle">Login to your account</p>
+  <!-- Auth Screen (Native Look) -->
+  <div id="auth-container" class="auth-screen hidden">
+    <div class="auth-wrapper">
+      <div class="auth-header-native">
+        <h1 class="logo-text">DTR</h1>
+        <p id="auth-subtitle" class="subtitle-text">Sign in to continue</p>
       </div>
 
-      <!-- Login Form -->
-      <form id="login-form" class="auth-form">
-        <div class="form-group">
-          <label for="login-email">Email</label>
-          <input type="email" id="login-email" placeholder="email@example.com" required>
+      <!-- Login View -->
+      <form id="login-form" class="native-form">
+        <div class="native-group">
+          <input type="email" id="login-email" placeholder="Email Address" required>
+          <span class="error-line"></span>
         </div>
-        <div class="form-group">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" placeholder="••••••••" required>
+        <div class="native-group">
+          <input type="password" id="login-password" placeholder="Password" required>
+          <span class="error-line"></span>
         </div>
-        <button type="submit" class="primary-btn">Login</button>
-        <div class="divider"><span>OR</span></div>
-        <button type="button" id="google-login-btn" class="secondary-btn">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="18" height="18" alt="">
-          Login with Google
+        <button type="submit" class="native-primary-btn">Sign In</button>
+        <div class="native-divider"><span>OR</span></div>
+        <button type="button" id="google-login-btn" class="native-google-btn">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="20" height="20" alt="">
+          Continue with Google
         </button>
-        <p class="auth-footer">Don't have an account? <a href="#" id="to-signup">Sign Up</a></p>
+        <p class="native-footer">New here? <a href="#" id="to-signup">Create Account</a></p>
       </form>
 
-      <!-- Signup Form -->
-      <form id="signup-form" class="auth-form hidden">
-        <div class="form-group">
-          <label for="signup-name">Full Name</label>
-          <input type="text" id="signup-name" placeholder="John Doe" required>
+      <!-- Signup View -->
+      <form id="signup-form" class="native-form hidden">
+        <div class="native-group">
+          <input type="text" id="signup-name" placeholder="Full Name" required>
+          <span class="error-line"></span>
         </div>
-        <div class="form-group">
-          <label for="signup-email">Email Address</label>
-          <input type="email" id="signup-email" placeholder="email@example.com" required>
+        <div class="native-group">
+          <input type="email" id="signup-email" placeholder="Email Address" required>
+          <span class="error-line"></span>
         </div>
-        <div class="form-group">
-          <label for="signup-password">Password</label>
-          <input type="password" id="signup-password" placeholder="••••••••" required>
+        <div class="native-group">
+          <input type="password" id="signup-password" placeholder="Create Password" required>
+          <span class="error-line"></span>
         </div>
-        <div class="form-group">
-          <label>Account Type</label>
-          <div class="role-selector">
-            <label class="role-opt">
+        <div class="native-group">
+          <div class="native-role-selector">
+            <label class="native-role-opt">
               <input type="radio" name="role" value="student" checked>
               <span>Student</span>
             </label>
-            <label class="role-opt">
+            <label class="native-role-opt">
               <input type="radio" name="role" value="teacher">
               <span>Teacher</span>
             </label>
           </div>
         </div>
-        <div id="class-code-group" class="form-group">
-          <label for="signup-class-code">Class Code (Optional)</label>
-          <input type="text" id="signup-class-code" placeholder="Enter teacher's code">
+        <div id="class-code-group" class="native-group">
+          <input type="text" id="signup-class-code" placeholder="Class Code (Optional)">
+          <span class="error-line"></span>
         </div>
-        <button type="submit" class="primary-btn">Create Account</button>
-        <div class="divider"><span>OR</span></div>
-        <button type="button" id="google-signup-btn" class="secondary-btn">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="18" height="18" alt="">
-          Sign up with Google
-        </button>
-        <p class="auth-footer">Already have an account? <a href="#" id="to-login">Login</a></p>
+        <button type="submit" class="native-primary-btn">Create Account</button>
+        <p class="native-footer">Already have an account? <a href="#" id="to-login">Sign In</a></p>
       </form>
     </div>
   </div>
 
-  <!-- Google Role Completion Modal -->
-  <div id="google-setup-modal" class="modal hidden">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2>Complete Profile</h2>
-      </header>
-      <div class="modal-body">
-        <p class="modal-description">Please select your account type to continue.</p>
-        <div class="form-group" style="margin-top: 1rem;">
-          <label>Account Type</label>
-          <div class="role-selector">
-            <label class="role-opt">
-              <input type="radio" name="setup-role" value="student" checked>
-              <span>Student</span>
-            </label>
-            <label class="role-opt">
-              <input type="radio" name="setup-role" value="teacher">
-              <span>Teacher</span>
-            </label>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="setup-class-code">Class Code (Optional)</label>
-          <input type="text" id="setup-class-code" placeholder="Enter teacher's code">
-        </div>
-        <button type="button" id="save-setup-btn" class="primary-btn">Finish Setup</button>
+  <!-- Google Setup -->
+  <div id="google-setup-modal" class="modal-overlay hidden">
+    <div class="modal-native">
+      <h3>Complete Profile</h3>
+      <p>Select your account type to finish setup.</p>
+      <div class="native-role-selector" style="margin: 1.5rem 0;">
+        <label class="native-role-opt">
+          <input type="radio" name="setup-role" value="student" checked>
+          <span>Student</span>
+        </label>
+        <label class="native-role-opt">
+          <input type="radio" name="setup-role" value="teacher">
+          <span>Teacher</span>
+        </label>
       </div>
+      <div class="native-group">
+        <input type="text" id="setup-class-code" placeholder="Class Code (Optional)">
+      </div>
+      <button type="button" id="save-setup-btn" class="native-primary-btn">Finish Setup</button>
     </div>
   </div>
 
-  <!-- Main App Container -->
-  <div id="root" class="app-container hidden">
-    <header class="app-header">
-      <div class="header-content">
-        <div class="user-info">
-          <span id="user-role-badge" class="role-badge">Student</span>
-          <span class="greeting">Hello, <span id="user-display-name">---</span></span>
-          <h2 class="app-title">DTR Dashboard</h2>
+  <!-- Main App Content -->
+  <div id="root" class="app-shell hidden">
+    <!-- Top Toolbar -->
+    <header class="top-toolbar">
+      <div class="toolbar-content">
+        <div class="toolbar-left">
+          <h1 class="toolbar-logo">DTR</h1>
         </div>
-        <div class="header-actions">
-          <button type="button" id="theme-toggle" class="icon-btn">
-            <i data-lucide="moon"></i>
-          </button>
-          <button type="button" id="logout-btn" class="icon-btn danger">
-            <i data-lucide="log-out"></i>
-          </button>
-          <button type="button" id="settings-btn" class="icon-btn">
-            <i data-lucide="settings"></i>
-          </button>
+        <div class="toolbar-center">
+          <span id="view-title" class="view-title">Dashboard</span>
+        </div>
+        <div class="toolbar-right">
+          <div id="sync-indicator" class="sync-dot"></div>
+          <span id="user-role-badge" class="role-chip">Student</span>
         </div>
       </div>
     </header>
 
-    <!-- Teacher Dashboard -->
-    <section id="teacher-section" class="teacher-panel hidden">
-      <div class="panel-header">
-        <div class="header-titles">
-          <h3>Class Management</h3>
-          <p id="student-count" class="student-count">0 students joined</p>
+    <!-- Main View Container -->
+    <main id="main-content" class="view-container">
+
+      <!-- Home View (Dashboard) -->
+      <section id="view-home" class="app-view">
+        <div class="welcome-banner">
+          <span class="greeting-text">Hello, <span id="user-display-name">---</span></span>
+          <p class="date-display" id="current-date">Fetching date...</p>
         </div>
 
-        <div id="class-selector" class="class-selector-container">
-          <!-- Class pills injected here -->
-          <button type="button" id="add-class-btn" class="class-pill add-class-btn">+ New Class</button>
-        </div>
-
-        <div class="class-code-card">
-          <div class="code-info">
-            <small>Current Class Code</small>
-            <span id="display-class-code">---</span>
+        <div class="main-stats-card">
+          <div class="progress-ring-box">
+            <svg class="progress-ring" viewBox="0 0 100 100">
+              <circle class="ring-bg" cx="50" cy="50" r="45"></circle>
+              <circle id="progress-bar" class="ring-fill" cx="50" cy="50" r="45"></circle>
+            </svg>
+            <div class="ring-inner">
+              <span id="rendered-hours" class="hours-val">0h</span>
+              <span id="rendered-percent" class="percent-val">0%</span>
+              <small>Complete</small>
+            </div>
           </div>
-          <button type="button" id="copy-code-btn" class="copy-btn">
-            <i data-lucide="copy"></i>
-            <span>Copy Code</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Teacher Analytics Overview -->
-      <section id="teacher-analytics" class="analytics-grid">
-        <div class="analytic-card">
-          <span class="analytic-label">Class Avg</span>
-          <span id="class-avg" class="analytic-value">0h</span>
-        </div>
-        <div class="analytic-card">
-          <span class="analytic-label">Top Completion</span>
-          <span id="top-pct" class="analytic-value">0%</span>
-        </div>
-      </section>
-
-      <!-- Honor Roll Section -->
-      <section id="honor-roll-section" class="honor-roll-card hidden">
-        <div class="section-header">
-          <h3><i data-lucide="trophy"
-              style="width:18px;height:18px;color:#fbbf24;margin-right:8px;vertical-align:text-bottom;"></i>Honor Roll
-          </h3>
-        </div>
-        <div id="honor-roll-list" class="honor-roll-list">
-          <!-- Top 3 students injected here -->
-        </div>
-      </section>
-
-      <div class="teacher-actions">
-        <div class="search-box">
-          <i data-lucide="search"></i>
-          <input type="text" id="student-search" placeholder="Search students...">
-        </div>
-        <div class="utility-btns">
-          <button type="button" id="refresh-teacher-btn" class="icon-btn-glass" title="Refresh">
-            <i data-lucide="refresh-cw"></i>
-          </button>
-          <button type="button" id="export-class-btn" class="icon-btn-glass" title="Export Class Report">
-            <i data-lucide="file-spreadsheet"></i>
-          </button>
-        </div>
-      </div>
-
-      <div id="students-list" class="students-list">
-        <div class="empty-state">No students joined yet.</div>
-      </div>
-    </section>
-
-    <!-- Student Dashboard -->
-    <section id="student-section" class="student-panel hidden">
-      <!-- Student Analytics -->
-      <section id="student-analytics" class="analytics-grid">
-        <div class="analytic-card">
-          <span class="analytic-label">Avg Session</span>
-          <span id="avg-session" class="analytic-value">0h</span>
-          <span class="analytic-trend"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> +12%</span>
-        </div>
-        <div class="analytic-card">
-          <span class="analytic-label">7-Day Total</span>
-          <span id="week-total" class="analytic-value">0h</span>
-          <span class="analytic-trend"><i data-lucide="calendar" style="width:12px;height:12px;"></i> Last 7d</span>
-        </div>
-      </section>
-
-      <!-- Stats Card -->
-      <section class="stats-card">
-        <div class="progress-circle-container">
-          <svg class="progress-circle" viewBox="0 0 100 100">
-            <circle class="bg" cx="50" cy="50" r="45"></circle>
-            <circle id="progress-bar" class="progress" cx="50" cy="50" r="45"></circle>
-          </svg>
-          <div class="circle-content">
-            <span id="rendered-hours">0h</span>
-            <span id="rendered-percent" class="stat-percent">0%</span>
-            <small>Done</small>
+          <div class="stats-row">
+            <div class="stat-box">
+              <span class="stat-lbl">Goal</span>
+              <span id="goal-hours-display" class="stat-num">---</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-lbl">Remaining</span>
+              <span id="remaining-hours" class="stat-num">---</span>
+            </div>
           </div>
         </div>
-        <div class="stats-info">
-          <div class="stat-item">
-            <span class="stat-label">Goal Hours</span>
-            <span id="goal-hours-display" class="stat-value">600h</span>
+
+        <!-- Dynamic Chronometer -->
+        <div id="active-session-card" class="session-card-native hidden">
+          <div class="session-header-mini">
+            <span class="pulse-dot"></span>
+            ACTIVE SESSION
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Remaining</span>
-            <span id="remaining-hours" class="stat-value">600h</span>
-          </div>
+          <h2 id="session-timer" class="chrono-text">00:00:00</h2>
         </div>
-      </section>
 
-      <!-- Quick Actions -->
-      <section class="quick-actions">
-        <button type="button" id="time-in-btn" class="action-btn in">
-          <i data-lucide="play"></i>
-          <span>Time In</span>
-        </button>
-        <button type="button" id="time-out-btn" class="action-btn out disabled" disabled>
-          <i data-lucide="square"></i>
-          <span>Time Out</span>
-        </button>
-        <button type="button" id="manual-entry-btn" class="action-btn manual" title="Add Past Hours">
-          <i data-lucide="edit-3"></i>
-          <span>Add Past</span>
-        </button>
-        <button type="button" id="pause-btn" class="action-btn pause hidden">
-          <i data-lucide="pause"></i>
-          <span>Pause</span>
-        </button>
-      </section>
-
-      <!-- Active Session -->
-      <section id="active-session-card" class="active-session hidden">
-        <div class="session-info">
-          <span class="session-label">Session Active</span>
-          <span id="session-timer" class="session-time">00:00:00</span>
-        </div>
-      </section>
-
-      <!-- Recent Logs -->
-      <section class="logs-section">
-        <div class="section-header">
-          <h3>Recent Logs</h3>
-          <div class="header-btns">
-            <button type="button" id="download-journal-btn" class="icon-btn-text" title="Download Journal">
-              <i data-lucide="file-spreadsheet"></i>
-              <span>Journal</span>
+        <div class="dashboard-actions">
+          <div id="stopped-actions" class="action-row">
+            <button type="button" id="time-in-btn" class="main-fab in">
+              <i data-lucide="play"></i>
+              <span>TIME IN</span>
             </button>
-            <button type="button" id="view-all-btn" class="text-btn">View All</button>
+          </div>
+          <div id="started-actions" class="action-row hidden">
+            <button type="button" id="time-out-btn" class="main-fab out">
+              <i data-lucide="square"></i>
+              <span>STOP</span>
+            </button>
+            <button type="button" id="pause-btn" class="main-fab pause">
+              <i data-lucide="pause"></i>
+              <span>PAUSE</span>
+            </button>
           </div>
         </div>
-        <div id="logs-list" class="logs-list">
-          <div class="empty-state">No sessions recorded yet.</div>
+
+        <div class="insight-grid">
+          <div class="insight-card">
+            <span class="insight-lbl">Avg Session</span>
+            <span id="avg-session" class="insight-val">0h</span>
+          </div>
+          <div class="insight-card">
+            <span class="insight-lbl">Last 7 Days</span>
+            <span id="week-total" class="insight-val">0h</span>
+          </div>
         </div>
       </section>
-    </section>
-  </div>
 
-
-
-  <!-- History Modal -->
-  <div id="history-modal" class="modal hidden">
-    <div class="modal-content wide">
-      <header class="modal-header">
-        <h2>Full History</h2>
-        <button type="button" id="close-history" class="icon-btn">
-          <i data-lucide="x"></i>
-        </button>
-      </header>
-      <div class="modal-body">
-        <div id="history-logs-list" class="logs-list"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Time Out Modal -->
-  <div id="timeout-modal" class="modal hidden">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2>Finish Session</h2>
-        <button type="button" id="close-timeout" class="icon-btn">
-          <i data-lucide="x"></i>
-        </button>
-      </header>
-      <div class="modal-body">
-        <p class="modal-description">Great job! What did you accomplish in this session?</p>
-        <div class="form-group" style="margin-top: 1rem;">
-          <label for="log-notes-input">Session Notes (Optional)</label>
-          <textarea id="log-notes-input" placeholder="e.g. Worked on the admin dashboard, fixed bug in login..."
-            rows="4"></textarea>
-        </div>
-        <button type="button" id="confirm-timeout-btn" class="primary-btn">
-          <i data-lucide="check"></i>
-          Confirm Time Out
-        </button>
-      </div>
-    </div>
-  </div>
-  <!-- Manual Entry Modal -->
-  <div id="manual-modal" class="modal hidden">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2>Add Past Hours</h2>
-        <button type="button" id="close-manual" class="icon-btn">
-          <i data-lucide="x"></i>
-        </button>
-      </header>
-      <div class="modal-body">
-        <p class="modal-description">Enter the details of your previous OJT session.</p>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="manual-date">Date</label>
-            <input type="date" id="manual-date" required>
-          </div>
-          <div class="form-group">
-            <label for="manual-time-in">Time In</label>
-            <input type="time" id="manual-time-in" required>
-          </div>
-          <div class="form-group">
-            <label for="manual-time-out">Time Out</label>
-            <input type="time" id="manual-time-out" required>
+      <!-- Journal View -->
+      <section id="view-journal" class="app-view hidden">
+        <div class="view-header-inline">
+          <h2>Journal & Logs</h2>
+          <div class="header-actions-inline">
+            <button id="download-journal-btn" class="icon-text-btn">
+              <i data-lucide="file-spreadsheet"></i>
+              <span>Export</span>
+            </button>
+            <button id="manual-entry-btn" class="icon-text-btn primary">
+              <i data-lucide="plus"></i>
+              <span>Add Past</span>
+            </button>
           </div>
         </div>
-        <div class="form-group">
-          <label for="manual-notes">Activities Conducted</label>
-          <textarea id="manual-notes" placeholder="e.g. Encoded documents, filed folders..." rows="3"></textarea>
-        </div>
-        <button type="button" id="save-manual-btn" class="primary-btn">
-          <i data-lucide="check"></i>
-          Add to Journal
-        </button>
-      </div>
-    </div>
-  </div>
 
-  <!-- Modals -->
-  <div id="settings-modal" class="modal hidden">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2>Settings</h2>
-        <button type="button" id="close-settings" class="icon-btn">
-          <i data-lucide="x"></i>
-        </button>
-      </header>
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="goal-hours-input">Total OJT Goal Hours</label>
-          <input type="number" id="goal-hours-input" value="600" placeholder="e.g. 600">
-        </div>
-        <button type="button" id="save-settings" class="primary-btn">Save Changes</button>
-
-        <!-- Student Class Management -->
-        <div id="student-class-settings" class="hidden">
-          <hr />
-          <div class="form-group">
-            <label>My Class</label>
-            <div id="no-class-view" class="class-join-box">
-              <input type="text" id="join-class-input" placeholder="Enter Class Code">
-              <button type="button" id="join-class-btn" class="primary-btn-mini">Join</button>
+        <!-- Manual Entry Inline Form (Instead of Modal) -->
+        <div id="manual-form-container" class="inline-card hidden">
+          <div class="card-header">
+            <h3>Add Past Hours</h3>
+            <button id="close-manual" class="close-card-btn"><i data-lucide="x"></i></button>
+          </div>
+          <div class="inline-form">
+            <div class="native-group">
+              <label>Date</label>
+              <input type="date" id="manual-date" required>
             </div>
-            <div id="has-class-view" class="class-status-box hidden">
-              <span class="status-text">Joined: <strong id="current-class-display">---</strong></span>
-              <button type="button" id="leave-class-btn" class="secondary-btn-mini">
-                <i data-lucide="log-out"></i>
-                <span>Leave</span>
-              </button>
+            <div class="form-row">
+              <div class="native-group">
+                <label>Start Time</label>
+                <input type="time" id="manual-time-in" required>
+              </div>
+              <div class="native-group">
+                <label>End Time</label>
+                <input type="time" id="manual-time-out" required>
+              </div>
+            </div>
+            <div class="native-group">
+              <label>Activities Conducted</label>
+              <textarea id="manual-notes" placeholder="What did you do?"></textarea>
+            </div>
+            <button id="save-manual-btn" class="native-primary-btn">Save Entry</button>
+          </div>
+        </div>
+
+        <div id="logs-list" class="native-logs-list">
+          <!-- Logs injected here -->
+        </div>
+        <button id="view-all-btn" class="full-width-btn">View More History</button>
+      </section>
+
+      <!-- Full History View -->
+      <section id="view-history" class="app-view hidden">
+        <div class="view-header-inline">
+          <button id="close-history" class="back-btn"><i data-lucide="arrow-left"></i></button>
+          <h2>History</h2>
+        </div>
+        <div id="history-logs-list" class="native-logs-list"></div>
+      </section>
+
+      <!-- Archive View (Trash) -->
+      <section id="view-archive" class="app-view hidden">
+        <div class="view-header-inline">
+          <button id="close-archive" class="back-btn"><i data-lucide="arrow-left"></i></button>
+          <h2>Archive</h2>
+        </div>
+        <p class="archive-note">Logs here will be permanently deleted after 30 days.</p>
+        <div id="archive-logs-list" class="native-logs-list"></div>
+      </section>
+
+      <!-- Settings View -->
+      <section id="view-settings" class="app-view hidden">
+        <div class="settings-group">
+          <h3>OJT Goal</h3>
+          <div class="inline-card">
+            <div class="native-group">
+              <label>Total Required Hours</label>
+              <input type="number" id="goal-hours-input" value="600">
+            </div>
+            <button id="save-settings" class="native-primary-btn">Update Goal</button>
+          </div>
+        </div>
+
+        <div id="student-class-settings" class="settings-group hidden">
+          <h3>Class Membership</h3>
+          <div class="inline-card">
+            <div id="no-class-view">
+              <div class="native-group">
+                <input type="text" id="join-class-input" placeholder="Enter Class Code">
+              </div>
+              <button id="join-class-btn" class="native-primary-btn">Join Class</button>
+            </div>
+            <div id="has-class-view" class="class-joined-box hidden">
+              <div class="joined-info">
+                <span>Joined: <strong id="current-class-display">---</strong></span>
+              </div>
+              <button id="leave-class-btn" class="native-danger-btn-outline">Leave Class</button>
             </div>
           </div>
         </div>
 
-        <hr />
+        <div class="settings-group">
+          <h3>Preferences</h3>
+          <div class="setting-item-toggle">
+            <div class="toggle-info">
+              <span>Dark Mode</span>
+              <small>Toggle app appearance</small>
+            </div>
+            <button id="theme-toggle" class="toggle-btn-native">
+              <i data-lucide="moon"></i>
+            </button>
+          </div>
+        </div>
 
-        <button type="button" id="export-db" class="secondary-btn">
-          <i data-lucide="download"></i>
-          Export SQLite DB
-        </button>
-        <button type="button" id="clear-data" class="danger-btn">
-          <i data-lucide="trash-2"></i>
-          Clear All Data
-        </button>
-      </div>
-    </div>
-  </div>
+        <div class="settings-group">
+          <h3>Data & Security</h3>
+          <div class="inline-card">
+            <button id="view-archive-btn" class="native-secondary-btn"
+              style="margin-bottom:12px; border-color: var(--warning); color: var(--warning);">
+              <i data-lucide="trash-2" style="width:16px; margin-right:8px;"></i>
+              Open Archive (Recycle Bin)
+            </button>
+            <button id="clear-data" class="native-danger-btn">Delete All App Data</button>
+          </div>
+        </div>
 
-  <!-- Student Detail Modal (For Teachers) -->
-  <div id="student-modal" class="modal hidden">
-    <div class="modal-content wide">
-      <header class="modal-header">
-        <h2 id="modal-student-name">Student Logs</h2>
-        <button type="button" id="close-student-modal" class="icon-btn">
-          <i data-lucide="x"></i>
-        </button>
-      </header>
-      <div class="modal-body">
-        <div class="student-stats-summary">
-          <div class="stat-mini">
-            <small>Rendered</small>
+        <div class="settings-group logout-v">
+          <button id="logout-btn" class="native-primary-btn danger">Sign Out</button>
+        </div>
+      </section>
+
+      <!-- Teacher View -->
+      <section id="teacher-section" class="app-view teacher-view hidden">
+        <div class="teacher-header-native">
+          <div id="class-selector" class="h-pills">
+            <!-- Class pills injected -->
+          </div>
+          <div class="class-info-card">
+            <div class="code-box">
+              <small>CLASS CODE</small>
+              <h2 id="display-class-code">---</h2>
+            </div>
+            <button id="copy-code-btn" class="circle-btn"><i data-lucide="copy"></i></button>
+          </div>
+        </div>
+
+        <div class="teacher-analytics-row">
+          <div class="analytic-tile">
+            <small>Student Avg</small>
+            <h4 id="class-avg">0h</h4>
+          </div>
+          <div class="analytic-tile">
+            <small>Completion</small>
+            <h4 id="top-pct">0%</h4>
+          </div>
+        </div>
+
+        <div class="teacher-actions-bar">
+          <div class="native-search">
+            <i data-lucide="search"></i>
+            <input type="text" id="student-search" placeholder="Search students...">
+          </div>
+          <button id="export-class-btn" class="icon-btn-native"><i data-lucide="file-spreadsheet"></i></button>
+          <button id="refresh-teacher-btn" class="icon-btn-native"><i data-lucide="refresh-cw"></i></button>
+        </div>
+
+        <div id="students-list" class="native-students-list">
+          <!-- Student cards injected -->
+        </div>
+      </section>
+
+      <!-- Student Detail View (Teacher Side) -->
+      <section id="student-detail-view" class="app-view hidden">
+        <div class="view-header-inline">
+          <button id="close-student-modal" class="back-btn"><i data-lucide="arrow-left"></i></button>
+          <h2 id="modal-student-name">Student Detail</h2>
+        </div>
+        <div class="student-overview-card">
+          <div class="o-stat">
+            <small>Total Rendered</small>
             <span id="modal-student-rendered">0h</span>
           </div>
-          <div class="stat-mini">
-            <small>Goal</small>
+          <div class="o-stat">
+            <small>Current Goal</small>
             <span id="modal-student-goal">600h</span>
           </div>
         </div>
-        <div id="modal-student-logs" class="logs-list"></div>
+        <div id="modal-student-logs" class="native-logs-list"></div>
+        <button id="kick-student-btn" class="native-danger-btn" style="margin-top: 2rem;">Remove Student from
+          Class</button>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Tabs -->
+    <nav class="bottom-nav">
+      <button class="nav-tab active" data-view="home">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-tab" data-view="journal">
+        <i data-lucide="book-open"></i>
+        <span>Journal</span>
+      </button>
+      <button class="nav-tab" data-view="settings">
+        <i data-lucide="settings"></i>
+        <span>Settings</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Time Out Session Activities (Full Screen) -->
+  <div id="timeout-modal" class="modal-overlay hidden">
+    <div class="modal-native">
+      <h3>Session Finished</h3>
+      <p>Describe your tasks today for the audit journal.</p>
+      <div class="native-group" style="margin: 1.5rem 0;">
+        <textarea id="log-notes-input" placeholder="e.g. Encoded employee records, attended meeting..."
+          rows="5"></textarea>
       </div>
-      <footer class="modal-footer">
-        <button type="button" id="kick-student-btn" class="danger-btn">
-          <i data-lucide="user-minus"></i>
-          <span>Kick Student</span>
-        </button>
-      </footer>
+      <button type="button" id="confirm-timeout-btn" class="native-primary-btn">Finish & Sign Log</button>
+      <button type="button" id="close-timeout" class="native-secondary-btn-flat">Back</button>
     </div>
   </div>
 
-  <!-- Create Class Modal -->
-  <div id="create-class-modal" class="modal hidden">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2>Create New Class</h2>
-        <button type="button" id="close-create-class" class="icon-btn"><i data-lucide="x"></i></button>
-      </header>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Class Name</label>
-          <input type="text" id="new-class-name" placeholder="e.g. BSCS 4-B">
-        </div>
-        <button type="button" id="confirm-create-class" class="primary-btn">Create Class</button>
+  <!-- Create Class Screen (Teacher) -->
+  <div id="create-class-modal" class="modal-overlay hidden">
+    <div class="modal-native">
+      <h3>Create New Class</h3>
+      <div class="native-group" style="margin: 1.5rem 0;">
+        <input type="text" id="new-class-name" placeholder="e.g. BSCS 4-B">
+      </div>
+      <button id="confirm-create-class" class="native-primary-btn">Create Class</button>
+      <button id="close-create-class" class="native-secondary-btn-flat">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Confirmation Screen -->
+  <div id="confirm-modal" class="modal-overlay hidden">
+    <div class="modal-native">
+      <h3 id="confirm-title">Confirm Action</h3>
+      <p id="confirm-description">Are you sure you want to proceed?</p>
+      <div class="modal-actions-native">
+        <button id="confirm-cancel-btn" class="native-secondary-btn-flat">Cancel</button>
+        <button id="confirm-action-btn" class="native-danger-btn">Confirm</button>
       </div>
     </div>
   </div>
 
-  <!-- Generic Confirmation Modal -->
-  <div id="confirm-modal" class="modal hidden">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2 id="confirm-title">Confirm Action</h2>
-      </header>
-      <div class="modal-body">
-        <p id="confirm-description" class="modal-description">Are you sure you want to proceed?</p>
-        <div class="modal-actions">
-          <button type="button" id="confirm-cancel-btn" class="secondary-btn">Cancel</button>
-          <button type="button" id="confirm-action-btn" class="primary-btn danger">Confirm</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="toast-container" class="toast-container"></div>
-
-  <div class="version-tag">v8.1.1 (Pahibalo Update)</div>
+  <div class="version-tag">v9.1.0 (Archive & UI Fix)</div>
 
   <script type="module" src="src/main.js"></script>
 </body>
