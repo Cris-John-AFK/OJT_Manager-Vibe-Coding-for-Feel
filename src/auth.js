@@ -19,9 +19,11 @@ export function setupAuthListeners(onLogin, onLogout) {
     getRedirectResult(auth).then(async (result) => {
         if (result?.user) {
             console.log("Redirect login success:", result.user);
+            await handleNewUser(result.user);
             await handleUserDoc(result.user, onLogin);
         }
     }).catch(err => console.error("Redirect Auth Error:", err));
+
 
     // 2. Regular Auth observer
     onAuthStateChanged(auth, async (user) => {
@@ -104,28 +106,29 @@ export async function logoutUser() {
 
 export async function loginWithGoogle() {
     try {
-        // Popups can be tricky on mobile, but Redirect often fails with "missing initial state"
-        // Let's try Popup first with a clear error handler
         console.log("Starting Google Login...");
-        const result = await signInWithPopup(auth, googleProvider);
-        const user = result.user;
-
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (!userDoc.exists()) {
-            await setDoc(doc(db, "users", user.uid), {
-                name: user.displayName, email: user.email, role: 'student', createdAt: new Date().toISOString()
-            });
+        if (window.Capacitor?.isNative) {
+            // Force Redirect for Native - Popup is too unstable for browser context switch
+            await signInWithRedirect(auth, googleProvider);
+            return { success: true };
+        } else {
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+            await handleNewUser(user);
+            return { success: true, user };
         }
-        return { success: true, user };
     } catch (error) {
         console.error("Google Login Error:", error);
-        // If popup fails, try redirect as fallback ONLY if specifically blocked
-        if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
-            if (window.Capacitor?.isNative) {
-                await signInWithRedirect(auth, googleProvider);
-                return { success: true };
-            }
-        }
         return { success: false, error: error.message };
     }
 }
+
+async function handleNewUser(user) {
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    if (!userDoc.exists()) {
+        await setDoc(doc(db, "users", user.uid), {
+            name: user.displayName, email: user.email, role: 'student', createdAt: new Date().toISOString()
+        });
+    }
+}
+

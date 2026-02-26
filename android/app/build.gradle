@@ -35,7 +35,14 @@ repositories {
 }
 
 dependencies {
+    // Force browser version to 1.8.0 to avoid SDK 36 requirement
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.browser:browser:1.8.0'
+        }
+    }
     modules {
+
         module("org.jetbrains.kotlin:kotlin-stdlib-jdk7") {
             replacedBy("org.jetbrains.kotlin:kotlin-stdlib", "kotlin-stdlib-jdk7 is now part of kotlin-stdlib")
         }

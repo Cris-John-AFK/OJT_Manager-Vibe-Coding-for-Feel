@@ -1,11 +1,12 @@
 import './style.css'
 import {
-  createIcons, Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check, Copy, Search, RefreshCw, FileSpreadsheet, UserMinus, Sun, Moon, CheckCircle, AlertCircle, TrendingUp, Calendar, Trophy, BookOpen, Plus, ArrowLeft, RotateCcw
+  createIcons, Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut, Edit3, Check, Copy, Search, RefreshCw, FileSpreadsheet, UserMinus, Sun, Moon, CheckCircle, AlertCircle, TrendingUp, Calendar, Trophy, BookOpen, Plus, ArrowLeft, RotateCcw, CloudOff
+
 } from 'lucide';
 import {
   initDatabase, getLogs, addLog, updateLog, getActiveSession,
   getSettings, updateSetting, getTotalRenderedHours, clearAllData,
-  exportDatabase, pauseLog, resumeLog, insertManualLog,
+  exportDatabase, pauseLog, resumeLog, insertManualLog, saveDatabase,
   getArchivedLogs, archiveLog, recoverLog, permanentlyDeleteLog, cleanupOldArchivedLogs
 } from './database';
 import { setupAuthListeners, loginUser, registerUser, logoutUser, loginWithGoogle } from './auth';
@@ -14,14 +15,19 @@ import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { syncLocalDataToCloud, fetchStudentsByClassCode, getStudentData, kickStudentFromClass, createClass, fetchTeacherClasses } from './cloudSync';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { registerPlugin } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
+
+
 
 const Timer = registerPlugin('Timer');
 
 const ICON_LIB = {
   Play, Square, Settings, X, Trash2, Download, LayoutDashboard, History, User, Pause, LogOut,
   Edit3, Check, Copy, Search, RefreshCw, FileSpreadsheet, UserMinus, Sun, Moon, CheckCircle,
-  AlertCircle, TrendingUp, Calendar, BookOpen, Plus, ArrowLeft, RotateCcw
+  AlertCircle, TrendingUp, Calendar, BookOpen, Plus, ArrowLeft, RotateCcw, CloudOff
 };
+
 
 const listen = (id, fn) => {
   const el = document.getElementById(id);
@@ -62,22 +68,28 @@ async function startApp() {
     // Initial Sync after database is ready
     setTimeout(() => syncCloud(), 3000);
 
-    // ... rest of startApp ...
-
-
     // Auto-save interval (every 5 minutes) as fallback
     setInterval(() => saveDatabase(), 5 * 60 * 1000);
 
     // Connectivity Listeners
     window.addEventListener('online', () => {
-      showToast("You're back online! Syncing...", "info");
+      showToast("You're back online! Syncing data...", "info");
       syncCloud();
-      updateSyncIndicator(true);
     });
     window.addEventListener('offline', () => {
-      showToast("You're offline. Saving locally.", "warning");
-      updateSyncIndicator(false);
+      showToast("No internet connection. Using local storage.", "warning");
+      updateSyncIndicator('offline');
     });
+
+    // Handle Deep Links for Auth redirect
+    App.addListener('appUrlOpen', async ({ url }) => {
+      console.log('App opened with URL:', url);
+      if (url.includes('com.crisjohn.dtrmanager')) {
+        // Force the app to check for redirect result
+        await Browser.close();
+      }
+    });
+
 
     const splash = document.getElementById('splash-screen');
     setTimeout(() => {
@@ -88,17 +100,30 @@ async function startApp() {
   } catch (error) { console.error("App Crash:", error); }
 }
 
-function updateSyncIndicator(isOnline) {
-  const dot = document.getElementById('sync-indicator');
-  if (!dot) return;
-  if (isOnline) {
-    dot.style.background = 'var(--success)';
-    dot.title = "Cloud Synced";
+function updateSyncIndicator(state) {
+  const badge = document.getElementById('sync-badge');
+  const text = document.getElementById('sync-text');
+  const icon = document.getElementById('sync-icon');
+  if (!badge || !text || !icon) return;
+
+  badge.classList.remove('offline', 'syncing');
+
+  if (state === 'offline') {
+    badge.classList.add('offline');
+    text.innerText = 'Offline';
+    icon.setAttribute('data-lucide', 'cloud-off');
+  } else if (state === 'syncing') {
+    badge.classList.add('syncing');
+    text.innerText = 'Syncing...';
+    icon.setAttribute('data-lucide', 'refresh-cw');
   } else {
-    dot.style.background = 'var(--warning)';
-    dot.title = "Offline (Saved Locally)";
+    text.innerText = 'Cloud Synced';
+    icon.setAttribute('data-lucide', 'check-circle');
   }
+  createIcons({ icons: { ...ICON_LIB, CloudOff: ICON_LIB.CloudOff || ICON_LIB.AlertCircle } });
 }
+
+
 
 
 function setupViewNavigation() {
@@ -133,9 +158,17 @@ function switchView(viewId) {
   };
   setText('view-title', titles[viewId] || 'DTR Manager');
 
-  if (viewId === 'journal') renderJournalLogs();
+  if (viewId === 'journal') {
+    const picker = document.getElementById('month-filter');
+    if (picker && !picker.value) {
+      const now = new Date();
+      picker.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    renderJournalLogs();
+  }
+  if (viewId === 'view-history') renderHistoryLogs();
   if (viewId === 'view-archive') renderArchivedLogs();
-  if (viewId === 'home') updateAppUI();
+
 
   createIcons({ icons: ICON_LIB });
 }
@@ -226,8 +259,21 @@ function setupEventListeners() {
   listen('view-all-btn', () => switchView('view-history'));
   listen('close-history', () => switchView('journal'));
 
+  const monthPicker = document.getElementById('month-filter');
+  if (monthPicker) monthPicker.oninput = () => renderJournalLogs();
+
+  listen('clear-filter-btn', () => {
+    const picker = document.getElementById('month-filter');
+    if (picker) picker.value = '';
+    renderJournalLogs();
+  });
+
+
   listen('view-archive-btn', () => switchView('view-archive'));
   listen('close-archive', () => switchView('settings'));
+  listen('close-edit', () => document.getElementById('edit-modal').classList.add('hidden'));
+  listen('update-log-btn', handleUpdateLog_Unified);
+
 
   // Teacher side
   listen('refresh-teacher-btn', () => window.location.reload());
@@ -330,9 +376,9 @@ function updateAppUI() {
 }
 
 function renderJournalLogs() {
-  const logs = getLogs();
+  const monthFilter = document.getElementById('month-filter')?.value; // YYYY-MM
+  const logs = getLogs(monthFilter);
   const list = document.getElementById('logs-list');
-  const histList = document.getElementById('history-logs-list');
 
   const generateHtml = (l) => `
       <div class="log-item">
@@ -343,20 +389,52 @@ function renderJournalLogs() {
         <div class="log-duration">${parseFloat(l.duration).toFixed(2)}h</div>
         ${l.notes ? `<div class="log-notes">${l.notes}</div>` : ''}
         <div class="log-actions-native">
+           <button class="action-icon-btn primary" onclick="window.handleEdit(${l.id})">
+             <i data-lucide="edit-3"></i> Edit
+           </button>
            <button class="action-icon-btn danger" onclick="window.handleArchive(${l.id})">
              <i data-lucide="trash-2"></i> Archive
            </button>
         </div>
+
       </div>
     `;
 
-  const html = logs.length === 0 ? '<div class="empty-state">No logs recorded.</div>' : logs.map(generateHtml).join('');
+  const html = logs.length === 0 ? '<div class="empty-state">No logs found for this period.</div>' : logs.map(generateHtml).join('');
   if (list) list.innerHTML = html;
-  if (histList) histList.innerHTML = html;
   createIcons({ icons: ICON_LIB });
 }
 
+function renderHistoryLogs() {
+  const list = document.getElementById('history-logs-list');
+  if (!list) return;
+  // Skip limit for full history
+  const logs = getLogs(null, true);
+  const generateHtml = (l) => `
+      <div class="log-item">
+        <div class="log-date-info">
+          <span class="l-date">${l.date}</span>
+          <span class="l-time">${l.time_in} - ${l.time_out}</span>
+        </div>
+        <div class="log-duration">${parseFloat(l.duration).toFixed(2)}h</div>
+        <div class="log-actions-native">
+           <button class="action-icon-btn primary" onclick="window.handleEdit(${l.id})">
+             <i data-lucide="edit-3"></i> Edit
+           </button>
+        </div>
+      </div>
+    `;
+  list.innerHTML = logs.length === 0 ? '<div class="empty-state">No history found.</div>' : logs.map(generateHtml).join('');
+  createIcons({ icons: ICON_LIB });
+}
+
+
+
+
+
+
 window.handleArchive = (id) => {
+
   showConfirm({
     title: 'Move to Archive?',
     desc: 'Log will be removed from journal but can be recovered from the Archive for 30 days.',
@@ -653,8 +731,16 @@ async function updateMediaNotification(time) {
 }
 
 async function initMediaSession() {
-  try { Timer.addListener('PAUSE', handlePauseResume); Timer.addListener('TIMEOUT', () => document.getElementById('timeout-modal').classList.remove('hidden')); } catch (e) { }
+  if (!window.Capacitor?.isNative) return;
+  try {
+    if (typeof Timer !== 'undefined' && Timer.addListener) {
+      Timer.addListener('PAUSE', handlePauseResume);
+      Timer.addListener('TIMEOUT', () => document.getElementById('timeout-modal')?.classList.remove('hidden'));
+    }
+  } catch (e) { console.warn("Timer listeners failed", e); }
 }
+
+
 
 async function exportClassReport() {
   const code = document.getElementById('display-class-code')?.textContent;
@@ -706,17 +792,97 @@ window.viewStudentDetail = async (id) => {
 
 async function syncCloud() {
   if (!navigator.onLine) {
-    updateSyncIndicator(false);
+    updateSyncIndicator('offline');
     return;
   }
-  const logs = getLogs();
+
+  updateSyncIndicator('syncing');
+  // Pass true to get ALL logs for cloud sync, not just the dashboard 50
+  const logs = getLogs(null, true);
   const settings = getSettings();
   const res = await syncLocalDataToCloud(logs, settings);
-  updateSyncIndicator(res.success);
+
+  setTimeout(() => {
+    updateSyncIndicator(res.success ? 'online' : 'offline');
+  }, 1000);
 }
 
 
+
+
+window.handleEdit = (id) => {
+  const logs = getLogs(null, true);
+  const log = logs.find(l => l.id === id);
+  if (!log) return;
+
+  const modal = document.getElementById('edit-modal');
+  document.getElementById('edit-date').value = log.date;
+
+  // Format time for 24h input (H:MM AM/PM -> HH:mm)
+  const parseTime = (t) => {
+    if (!t) return "";
+    const [time, modifier] = t.split(' ');
+    let [hours, minutes] = time.split(':');
+    let h = parseInt(hours, 10);
+    if (h === 12) h = 0;
+    if (modifier === 'PM') h += 12;
+    return `${String(h).padStart(2, '0')}:${minutes}`;
+  };
+
+  document.getElementById('edit-time-in').value = parseTime(log.time_in);
+  document.getElementById('edit-time-out').value = parseTime(log.time_out);
+  document.getElementById('edit-notes').value = log.notes || "";
+
+  modal.dataset.editingId = id;
+  modal.classList.remove('hidden');
+};
+
+async function handleUpdateLog_Unified() {
+  const modal = document.getElementById('edit-modal');
+  const id = parseInt(modal.dataset.editingId);
+  const date = document.getElementById('edit-date').value;
+  const timeInRaw = document.getElementById('edit-time-in').value;
+  const timeOutRaw = document.getElementById('edit-time-out').value;
+  const notes = document.getElementById('edit-notes').value;
+
+  if (!date || !timeInRaw || !timeOutRaw) {
+    showToast("Please fill all fields", "error");
+    return;
+  }
+
+  const formatTime = (t) => {
+    let [h, m] = t.split(':');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m} ${ampm}`;
+  };
+
+  const timeIn = formatTime(timeInRaw);
+  const timeOut = formatTime(timeOutRaw);
+
+  const [h1, m1] = timeInRaw.split(':').map(Number);
+  const [h2, m2] = timeOutRaw.split(':').map(Number);
+  let dur = (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
+  if (dur < 0) dur += 24;
+
+  const iso_start = `${date}T${timeInRaw}:00`;
+  const success = updateLog(id, { date, timeIn, timeOut, duration: dur, notes, iso_start });
+
+  if (success) {
+    showToast("Log updated successfully", "success");
+    modal.classList.add('hidden');
+    renderJournalLogs();
+    if (document.getElementById('view-history')?.classList.contains('hidden') === false) {
+      renderHistoryLogs();
+    }
+    syncCloud();
+  } else {
+    showToast("Failed to update log", "error");
+  }
+}
+
 async function startNativeTimer() {
+
   timerServiceStarted = false; await updateMediaNotification('00:00:00');
 }
 

@@ -41,11 +41,13 @@
       <!-- Login View -->
       <form id="login-form" class="native-form">
         <div class="native-group">
-          <input type="email" id="login-email" placeholder="Email Address" required>
+          <input type="email" id="login-email" placeholder="Email Address" required autocomplete="email">
+
           <span class="error-line"></span>
         </div>
         <div class="native-group">
-          <input type="password" id="login-password" placeholder="Password" required>
+          <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+
           <span class="error-line"></span>
         </div>
         <button type="submit" class="native-primary-btn">Sign In</button>
@@ -64,11 +66,14 @@
           <span class="error-line"></span>
         </div>
         <div class="native-group">
-          <input type="email" id="signup-email" placeholder="Email Address" required>
+          <input type="email" id="signup-email" placeholder="Email Address" required autocomplete="email">
+
           <span class="error-line"></span>
         </div>
         <div class="native-group">
-          <input type="password" id="signup-password" placeholder="Create Password" required>
+          <input type="password" id="signup-password" placeholder="Create Password" required
+            autocomplete="new-password">
+
           <span class="error-line"></span>
         </div>
         <div class="native-group">
@@ -122,13 +127,14 @@
       <div class="toolbar-content">
         <div class="toolbar-left">
           <h1 class="toolbar-logo">DTR</h1>
-        </div>
-        <div class="toolbar-center">
           <span id="view-title" class="view-title">Dashboard</span>
         </div>
         <div class="toolbar-right">
-          <div id="sync-indicator" class="sync-dot"></div>
-          <span id="user-role-badge" class="role-chip">Student</span>
+          <div id="sync-badge" class="sync-status-badge">
+            <i id="sync-icon" data-lucide="refresh-cw" class="sync-icon"></i>
+            <span id="sync-text">Cloud Synced</span>
+          </div>
+          <span id="user-role-badge" class="role-chip">student</span>
         </div>
       </div>
     </header>
@@ -252,10 +258,22 @@
           </div>
         </div>
 
+        <!-- Mobile Friendly Filter Bar -->
+        <div class="filter-container">
+          <div class="filter-picker-card">
+            <i data-lucide="calendar" class="picker-icon"></i>
+            <input type="month" id="month-filter" class="native-month-input">
+          </div>
+          <button id="clear-filter-btn" class="show-all-chip">Show All</button>
+        </div>
+
+
         <div id="logs-list" class="native-logs-list">
+
           <!-- Logs injected here -->
         </div>
-        <button id="view-all-btn" class="full-width-btn">View More History</button>
+        <button id="view-all-btn" class="full-width-btn">View All History</button>
+
       </section>
 
       <!-- Full History View -->
@@ -418,6 +436,34 @@
     </nav>
   </div>
 
+  <!-- Edit Log Modal -->
+  <div id="edit-modal" class="modal-overlay hidden">
+    <div class="modal-native">
+      <h3>Edit Entry</h3>
+      <div class="native-group">
+        <label>Date</label>
+        <input type="date" id="edit-date">
+      </div>
+      <div class="form-row">
+        <div class="native-group">
+          <label>In</label>
+          <input type="time" id="edit-time-in">
+        </div>
+        <div class="native-group">
+          <label>Out</label>
+          <input type="time" id="edit-time-out">
+        </div>
+      </div>
+      <div class="native-group">
+        <label>Notes</label>
+        <textarea id="edit-notes"></textarea>
+      </div>
+      <button id="update-log-btn" class="native-primary-btn">Update Log</button>
+      <button id="close-edit" class="native-secondary-btn-flat">Cancel</button>
+    </div>
+  </div>
+
+
   <!-- Time Out Session Activities (Full Screen) -->
   <div id="timeout-modal" class="modal-overlay hidden">
     <div class="modal-native">
@@ -456,7 +502,11 @@
     </div>
   </div>
 
-  <div class="version-tag">v9.4.0 (Archive & UI Fix)</div>
+  <div class="version-tag">v10.5.0 (Mobile UX Polish)</div>
+
+
+
+
 
   <script type="module" src="src/main.js"></script>
 </body>
