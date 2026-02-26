@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -412,6 +412,26 @@
             <span id="modal-student-goal">600h</span>
           </div>
         </div>
+
+        <!-- Batch Actions -->
+        <div class="bulk-actions-bar"
+          style="display:flex; justify-content:space-between; align-items:center; background: var(--bg-surface); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="bulk-select-all" style="width: 18px; height: 18px;"
+              onclick="window.toggleSelectAllLogs(this)">
+            <span style="font-size: 0.85rem; font-weight: 600;">Select All</span>
+          </label>
+          <div style="display:flex; gap: 8px;">
+            <button class="action-icon-btn recover" style="padding: 6px 12px; min-height:30px;"
+              onclick="window.bulkApproveLogs()">
+              <i data-lucide="check-check"></i> Approve
+            </button>
+            <button class="action-icon-btn danger" style="padding: 6px 12px; min-height:30px;"
+              onclick="window.bulkRejectLogs()">
+              <i data-lucide="x"></i> Reject
+            </button>
+          </div>
+        </div>
         <div id="modal-student-logs" class="native-logs-list"></div>
         <button id="kick-student-btn" class="native-danger-btn" style="margin-top: 2rem;">Remove Student from
           Class</button>
@@ -468,8 +488,26 @@
   <div id="timeout-modal" class="modal-overlay hidden">
     <div class="modal-native">
       <h3>Session Finished</h3>
-      <p>Describe your tasks today for the audit journal.</p>
-      <div class="native-group" style="margin: 1.5rem 0;">
+      <p>Describe your tasks today for the audit journal and attach a proof photo.</p>
+
+      <div class="native-group" style="margin-top: 1rem;">
+        <label>Photo Proof (Required)</label>
+        <input type="file" id="log-photo-input" accept="image/*" capture="environment"
+          style="width:100%; padding: 8px; border: 1px dashed var(--border); border-radius: 8px; margin-top: 4px; background:var(--bg-surface);">
+      </div>
+
+      
+      <div class="native-group" style="margin-top: 1rem;">
+        <label style="display:flex;align-items:center;justify-content:space-between;">
+          <span>&#128205; Location Snapshot</span>
+          <button type="button" id="refresh-location-btn" style="background:none;border:none;color:var(--primary);font-size:0.8rem;cursor:pointer;padding:0;text-decoration:underline;">&#8635; Refresh</button>
+        </label>
+        <div id="location-display" style="margin-top:6px;padding:10px 12px;border-radius:8px;background:var(--bg-surface);border:1px solid var(--border);font-size:0.78rem;color:var(--text-secondary);display:flex;align-items:center;gap:8px;min-height:40px;">
+          <span id="location-display-text" style="flex:1;">Acquiring location...</span>
+          <a id="location-map-link" href="#" target="_blank" style="display:none;color:var(--primary);font-size:0.75rem;white-space:nowrap;text-decoration:none;">Open Map &#8599;</a>
+        </div>
+      </div>
+<div class="native-group" style="margin: 1.5rem 0;">
         <textarea id="log-notes-input" placeholder="e.g. Encoded employee records, attended meeting..."
           rows="5"></textarea>
       </div>
@@ -502,7 +540,7 @@
     </div>
   </div>
 
-  <div class="version-tag">v10.5.0 (Mobile UX Polish)</div>
+  <div class="version-tag">v11.0.0 (OJT Master Edition : GPS & Approvals)</div>
 
 
 

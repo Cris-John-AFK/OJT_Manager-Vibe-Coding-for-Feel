@@ -1,9 +1,15 @@
-import { db, auth } from './firebase';
+import { db, auth, storage } from './firebase';
 import { doc, setDoc, collection, addDoc, query, where, getDocs, deleteDoc, getDoc, updateDoc, deleteField } from "firebase/firestore";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
 
 export async function syncLocalDataToCloud(logs, settings) {
     const user = auth.currentUser;
     if (!user) return;
+
+    // On localhost dev, Firebase Storage CORS blocks all uploads — skip them entirely
+    const isLocalhost = typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+        !window.Capacitor?.isNative;
 
     try {
         // 1. Sync User Stats/Settings to their main doc
@@ -18,17 +24,80 @@ export async function syncLocalDataToCloud(logs, settings) {
 
         // Simple strategy: Clear cloud logs and re-upload (safe for small DTR logs)
         // Or better: only upload if not exists. Let's do a simple merge.
+        const statusUpdates = [];
         for (const log of logs) {
             // We use safe IDs or timestamps to avoid duplicates
             const logId = `${log.date}_${log.time_in}`.replace(/\//g, '-');
-            await setDoc(doc(logsRef, logId), {
+            const docRef = doc(logsRef, logId);
+
+            const cDoc = await getDoc(docRef);
+            let finalStatus = log.approval_status || 'pending';
+            let finalPhotoUrl = log.photo_url || null;
+
+            // Upload Base64 Photo to Storage if needed
+            // Also check localForage for photos deferred due to CORS/network failure
+            if (!finalPhotoUrl) {
+                try {
+                    const localforage = (await import('localforage')).default;
+                    const deferred = await localforage.getItem(`pending_photo_${logId}`);
+                    if (deferred) {
+                        if (isLocalhost) {
+                            // On localhost: can't upload to Storage (CORS), store base64 directly in Firestore
+                            // Firestore doc limit is 1MB; photo base64 is ~48KB — safe
+                            console.log('[Sync] Localhost: storing base64 directly in Firestore for', logId);
+                            finalPhotoUrl = deferred; // data:image/jpeg;base64,...
+                        } else {
+                            finalPhotoUrl = deferred;
+                            console.log('[Sync] Found deferred photo in localForage for', logId);
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            if (finalPhotoUrl && finalPhotoUrl.startsWith('data:image')) {
+                if (isLocalhost) {
+                    // Keep as base64 data URL — goes straight into Firestore doc
+                    console.log('[Sync] Localhost: embedding base64 photo in Firestore doc for', logId);
+                    // finalPhotoUrl already set, no upload needed
+                } else {
+                    try {
+                        console.log('[Sync] Uploading photo for log', logId, '- size:', finalPhotoUrl.length);
+                        const imgRef = ref(storage, `users/${user.uid}/logs/${logId}.jpg`);
+                        await uploadString(imgRef, finalPhotoUrl, 'data_url');
+                        finalPhotoUrl = await getDownloadURL(imgRef);
+                        console.log('[Sync] Photo uploaded OK:', finalPhotoUrl);
+                        // Tell local SQLite to swap out and clean up localForage entry
+                        statusUpdates.push({ id: log.id, photo_url: finalPhotoUrl });
+                        try {
+                            const localforage = (await import('localforage')).default;
+                            await localforage.removeItem(`pending_photo_${logId}`);
+                        } catch (e) { /* ignore */ }
+                    } catch (e) {
+                        console.error('[Sync] Photo Upload Failed:', e.code, e.message);
+                    }
+                }
+            } else {
+                if (!isLocalhost) console.log('[Sync] log', logId, 'photo_url:', finalPhotoUrl ? 'URL already' : 'NULL');
+            }
+
+            if (cDoc.exists() && cDoc.data().approval_status && cDoc.data().approval_status !== log.approval_status) {
+                if (cDoc.data().approval_status !== 'pending') {
+                    finalStatus = cDoc.data().approval_status;
+                    statusUpdates.push({ id: log.id, approval_status: finalStatus, photo_url: finalPhotoUrl });
+                }
+            }
+
+            console.log('[Sync] setDoc', logId, '| location_in:', log.location_in, '| status:', log.status);
+            await setDoc(docRef, {
                 ...log,
+                photo_url: finalPhotoUrl,
+                approval_status: finalStatus,
                 syncedAt: new Date().toISOString()
             });
         }
 
         console.log("Cloud sync complete!");
-        return { success: true };
+        return { success: true, statusUpdates };
     } catch (error) {
         console.error("Sync Error:", error);
         return { success: false, error: error.message };

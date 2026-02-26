@@ -84,9 +84,13 @@ function createTables() {
             );
             INSERT OR IGNORE INTO settings (key, value) VALUES ('goal_hours', '600');
         `);
-        // Migration: ensure notes and deleted_at columns exist
+        // Migration: ensure new tracking/ux columns exist
         try { db.run("ALTER TABLE logs ADD COLUMN notes TEXT"); } catch (e) { }
         try { db.run("ALTER TABLE logs ADD COLUMN deleted_at TEXT"); } catch (e) { }
+        try { db.run("ALTER TABLE logs ADD COLUMN location_in TEXT"); } catch (e) { }
+        try { db.run("ALTER TABLE logs ADD COLUMN location_out TEXT"); } catch (e) { }
+        try { db.run("ALTER TABLE logs ADD COLUMN approval_status TEXT DEFAULT 'pending'"); } catch (e) { }
+        try { db.run("ALTER TABLE logs ADD COLUMN photo_url TEXT"); } catch (e) { }
     } catch (err) {
         console.error("createTables error:", err);
     }
@@ -144,8 +148,11 @@ export async function saveDatabase() {
 export function getLogs(monthFilter = null, skipLimit = false) {
 
     if (!db) return [];
+    // Explicit column list — never rely on SELECT * with CDN sql.js since ALTER TABLE
+    // columns may not appear in res[0].columns metadata
+    const COLS = ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms', 'notes', 'deleted_at', 'location_in', 'location_out', 'approval_status', 'photo_url'];
     try {
-        let query = `SELECT * FROM logs WHERE status = 'completed' AND deleted_at IS NULL`;
+        let query = `SELECT ${COLS.join(',')} FROM logs WHERE status = 'completed' AND deleted_at IS NULL`;
 
         if (monthFilter && monthFilter !== '') {
             const [y, m] = monthFilter.split('-');
@@ -159,23 +166,18 @@ export function getLogs(monthFilter = null, skipLimit = false) {
             )`;
         }
 
-
         // Sorting: Order by date first, then iso_start (Newest First)
         query += ` ORDER BY date DESC, iso_start DESC, id DESC`;
-
 
         // If no filter and not skipping limit, limit to 50 for performance
         if ((!monthFilter || monthFilter === '') && !skipLimit) query += ` LIMIT 50`;
 
-
-
         const res = db.exec(query);
         if (res.length === 0 || !res[0].values) return [];
-        const columns = res[0].columns || ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms', 'notes', 'deleted_at'];
 
         return res[0].values.map(row => {
             const obj = {};
-            columns.forEach((col, i) => obj[col] = row[i]);
+            COLS.forEach((col, i) => obj[col] = row[i]);
             return obj;
         });
     } catch (e) {
@@ -187,14 +189,13 @@ export function getLogs(monthFilter = null, skipLimit = false) {
 
 export function getArchivedLogs() {
     if (!db) return [];
+    const COLS = ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms', 'notes', 'deleted_at', 'location_in', 'location_out', 'approval_status', 'photo_url'];
     try {
-        const res = db.exec(`SELECT * FROM logs WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`);
+        const res = db.exec(`SELECT ${COLS.join(',')} FROM logs WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`);
         if (res.length === 0 || !res[0].values) return [];
-        const columns = res[0].columns || ['id', 'date', 'time_in', 'time_out', 'duration', 'status', 'iso_start', 'paused_at', 'total_paused_ms', 'notes', 'deleted_at'];
-
         return res[0].values.map(row => {
             const obj = {};
-            columns.forEach((col, i) => obj[col] = row[i]);
+            COLS.forEach((col, i) => obj[col] = row[i]);
             return obj;
         });
     } catch (e) {
@@ -256,7 +257,7 @@ export function cleanupOldArchivedLogs() {
     }
 }
 
-export function addLog(date, timeIn, isoStart) {
+export function addLog(date, timeIn, isoStart, locationIn = null) {
     if (!db) {
         console.error("Database not initialized during addLog!");
         return false;
@@ -264,8 +265,9 @@ export function addLog(date, timeIn, isoStart) {
     try {
         // Universal YYYY-MM-DD for storage to avoid locale issues
         const isoDate = new Date(isoStart).toISOString().split('T')[0];
-        console.log("addLog called with:", isoDate, timeIn, isoStart);
-        db.run(`INSERT INTO logs (date, time_in, status, iso_start) VALUES ('${isoDate}', '${timeIn}', 'active', '${isoStart}')`);
+        const safeLoc = locationIn ? `'${locationIn.replace(/'/g, "''")}'` : 'NULL';
+        console.log("addLog called with:", isoDate, timeIn, isoStart, locationIn);
+        db.run(`INSERT INTO logs (date, time_in, status, iso_start, location_in, approval_status) VALUES ('${isoDate}', '${timeIn}', 'active', '${isoStart}', ${safeLoc}, 'pending')`);
         saveDatabase();
         console.log("addLog success!");
         return true;
@@ -280,8 +282,6 @@ export function addLog(date, timeIn, isoStart) {
 export function updateLog(id, updates) {
     if (!db) return false;
     try {
-        const fields = [];
-        // Handle variations in parameter names (time_in vs timeIn)
         const mapping = {
             date: 'date',
             timeIn: 'time_in',
@@ -292,25 +292,39 @@ export function updateLog(id, updates) {
             status: 'status',
             notes: 'notes',
             isoStart: 'iso_start',
-            iso_start: 'iso_start'
+            iso_start: 'iso_start',
+            locationIn: 'location_in',
+            locationOut: 'location_out',
+            location_in: 'location_in',
+            location_out: 'location_out',
+            approvalStatus: 'approval_status',
+            approval_status: 'approval_status',
+            photoUrl: 'photo_url',
+            photo_url: 'photo_url'
         };
 
+        const fields = [];
         for (const [key, value] of Object.entries(updates)) {
             const dbColumn = mapping[key];
-            if (dbColumn) {
-                if (typeof value === 'string') {
-                    const safeValue = value.replace(/'/g, "''");
-                    fields.push(`${dbColumn} = '${safeValue}'`);
-                } else if (value === null) {
-                    fields.push(`${dbColumn} = NULL`);
-                } else {
-                    fields.push(`${dbColumn} = ${value}`);
-                }
+            if (!dbColumn) continue;
+            if (value === null || value === undefined) {
+                fields.push(`${dbColumn} = NULL`);
+            } else if (typeof value === 'number') {
+                fields.push(`${dbColumn} = ${value}`);
+            } else {
+                // Escape single quotes for SQL safety
+                const safe = String(value).replace(/'/g, "''");
+                fields.push(`${dbColumn} = '${safe}'`);
             }
         }
 
         if (fields.length > 0) {
-            db.run(`UPDATE logs SET ${fields.join(', ')} WHERE id = ${id}`);
+            const sql = `UPDATE logs SET ${fields.join(', ')} WHERE id = ${Number(id)}`;
+            console.log('[updateLog] SQL:', sql.substring(0, 120), '...');
+            db.run(sql);
+            // Verify the change was committed
+            const check = db.exec(`SELECT id, status, location_in, photo_url FROM logs WHERE id = ${Number(id)}`);
+            console.log('[updateLog] Verified row:', check[0]?.values?.[0]);
             saveDatabase();
         }
         return true;
@@ -320,10 +334,11 @@ export function updateLog(id, updates) {
     }
 }
 
-export function insertManualLog({ date, timeIn, timeOut, duration, notes }) {
+export function insertManualLog({ date, timeIn, timeOut, duration, notes, locationIn = null }) {
     if (!db) return false;
     try {
         const safeNotes = (notes || "").replace(/'/g, "''");
+        const safeLoc = locationIn ? `'${locationIn.replace(/'/g, "''")}'` : 'NULL';
         // Create a sortable iso_start for manual entries
         const [h, m] = timeIn.split(' ')[0].split(':');
         let hrs = parseInt(h);
@@ -331,8 +346,9 @@ export function insertManualLog({ date, timeIn, timeOut, duration, notes }) {
         if (timeIn.includes('AM') && hrs === 12) hrs = 0;
         const isoStart = `${date}T${String(hrs).padStart(2, '0')}:${m}:00`;
 
-        db.run(`INSERT INTO logs (date, time_in, time_out, duration, notes, status, iso_start) 
-                VALUES ('${date}', '${timeIn}', '${timeOut}', ${duration}, '${safeNotes}', 'completed', '${isoStart}')`);
+        db.run(`INSERT INTO logs (date, time_in, time_out, duration, notes, status, iso_start, location_in, approval_status) 
+                VALUES ('${date}', '${timeIn}', '${timeOut}', ${duration}, '${safeNotes}', 'completed', '${isoStart}', ${safeLoc}, 'pending')`);
+
 
         saveSqlDatabase();
         return true;
@@ -412,7 +428,7 @@ export async function clearAllData() {
 export function pauseLog(id, isoNow) {
     try {
         db.run(`UPDATE logs SET status = 'paused', paused_at = '${isoNow}' WHERE id = ${id}`);
-        saveSqlDatabase();
+        saveDatabase();
     } catch (err) {
         console.error("pauseLog ERROR:", err);
     }
